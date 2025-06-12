@@ -184,6 +184,43 @@ body {
     border: 1px solid #c62828;
 }
 
+#suggested-questions-area {
+    padding: 10px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #f9f9f9;
+}
+
+#suggested-questions-area h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1em;
+    font-weight: 600;
+    color: #333;
+}
+
+#suggested-questions-buttons {
+    display: flex;
+    flex-wrap: wrap; 
+    gap: 8px; 
+}
+
+.suggested-question-btn {
+    padding: 8px 12px;
+    background-color: #e9ecef; 
+    color: #007bff; 
+    border: 1px solid #007bff; 
+    border-radius: 16px; 
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s, color 0.2s;
+    text-align: right;
+}
+
+.suggested-question-btn:hover {
+    background-color: #007bff;
+    color: white;
+}
+
 
 #input-area {
     display: flex;
