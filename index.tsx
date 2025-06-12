@@ -1,103 +1,116 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Content } from '@google/genai';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom/client';
+import { marked } from 'marked';
 
-// --- تم إضافة السياق الكامل هنا ---
-const systemInstructionText = `**التعليمات للنموذج:**
-انا مساعد متخصص في تحليل وثائق استراتيجة التحول الرقمي وموؤمتها مع رؤية المملكة 2030 واهدفها لهيئة الهلال الاحمر السعودي. مهمتك هي الإجابة على السؤال التالي بدقة وتفصيل، إذا كانت بعض جوانب السؤال لا يمكن الإجابة عليها من السياق، اذكر ذلك بوضوح. قم بتنظيم الإجابة بحيث يتم العرض بشكل واضح ومرتب. **يرجى استخدام تنسيق Markdown لتقديم الإجابة بشكل منظم، مثل القوائم النقطية أو الرقمية، والنص العريض، والجداول إذا كانت مناسبة.** ولاتذكر بناء على السياق في الاجابة . في حال لايتضمن السياق الاجابة اذكر انه لايمكنك الاجابة على هذا السؤال حاليا ولاتذكر السياق ومايوجد فيه نهائيا
----
-**السياق **
-**الرؤية العامة للتحول الرقمي (كمقدمة للسياق إذا كانت ذات صلة مباشرة بالأهداف):**
-خدمات إسعافية موثوقة ومستدامة من خلال حلول رقمية متميزة وإبداعية.
-**الرسالة العامة للتحول الرقمي (كمقدمة للسياق إذا كانت ذات صلة مباشرة بالأهداف):**
-نسعى إلى التميز والإبداع في الحلول الرقمية لتمكين الريادة في حفظ الأرواح وتقديم خدمات إسعافية موثوقة ومستدامة.
-**الأهداف الاستراتيجية للتحول الرقمي ووصفها:**
-1.  **الهدف الاستراتيجي 1.1: تعزيز الأمن والحماية للأنظمة والشبكات**
-    * **الوصف:** وتعزيز الأمن والحماية للأنظمة التطبيقات والشبكات ومراكز البيانات وباقي مكونات البنية الرقمية من خلال تفعيل وتبني ممارسات الأمن السيبراني لتوفير منتجات وخدمات آمنة لجميع المستفيدين من خلال إنشاء وتفعيل وحماية مراكز البيانات ومراكز المراقبة وتعزيز استمرارية شبكة الاتصالات, الأنظمة والخوادم، و التخزين والنسخ الاحتياطي والالتزام بمعايير الهيئة الوطنية للأمن السيبراني.
-2.  **الهدف الاستراتيجي 1.2: تبني الحوسبة السحابية وتحسين البنية الرقمية**
-    * **الوصف:** تبني الحوسبة السحابية من خلال تطوير ممارسات فعالة للتحول للبنية السحابية بالإضافة إلى تحسين وتطوير البنية التحتية الرقمية لتلبية احتياجات الهيئة وتضمن تحقيق أهداف استراتيجية التحول الرقمي بالهيئة.
-3.  **الهدف الاستراتيجي 1.3: تعزيز كفاءة وموثوقية الخدمات والحلول الرقمية**
-    * **الوصف:** العمل على توفير خدمات رقمية ذات كفاءة وموثوقية عالية من خلال تحسين الاعتمادية والموثوقية للخدمات ذات الأولوية بما يضمن تحسين جودة الخدمات ودعم الحلول الرقمية لضمان استمرارية الخدمة الاسعافية بلا انقطاع.
-4.  **الهدف الاستراتيجي 1.4: بيئة رقمية متكاملة**
-    * **الوصف:** بناء منظومة تكامل رقمية (داخلية وخارجية) تخدم تطلعات الهيئة وتلبي تطلعات المستفيدين ويتم ذلك من خلال تضمين وتكامل ومشاركة جميع الجهات الصحية وباقي الجهات الحكومية بشكل الكتروني وفعال في الرحلة الإسعافية.
-5.  **الهدف الاستراتيجي 2.1: تبني وتفعيل أفضل الممارسات في التحول الرقمي**
-    * **الوصف:** تبني أفضل ممارسات التحول الرقمي ورفع الكفاءة والفعالية في إدارة وتنفيذ عملية التغيير – ورفع درجة الإلتزام بالسياسات والضوابط والمنهجية المعتمدة وحوكمة وإدارة العلاقة مع الشركاء في المجال التقني - تفعيل النموذج التشغيلي وتطبيق أفضل الممارسات لتشغيل وحوكمة التحول الرقمي وتحسين كفاءة الإنفاق في التحول الرقمي.
-6.  **الهدف الاستراتيجي 2.2: تعظيم الاستفادة من أنظمة البيانات لدعم اتخاذ القرار**
-    * **الوصف:** دعم اتخاذ القرار بتوفير البيانات الصحيحة في التقارير والإحصائيات اللازمة بشكل مؤتمت يضمن سهولة الوصول للمعلومات والعمل على رفع جودتها وموثوقيتها.
-7.  **الهدف الاستراتيجي 2.3: تعزيز وبناء القدرات والكفاءات في التحول الرقمي**
-    * **الوصف:** تعزيز القدرات والكفاءات البشرية اللازمة للتحول الرقمي عن طريق التحليل المستمر لاحتياج الهيئة من قدرات وكفاءات التحول الرقمي والتأهيل والاستقطاب وبناء الشراكات اللازمة لبناء بيئة رقمية موثوقة ومستدامة.
-8.  **الهدف الاستراتيجي 3.1: تحسين تجربة المستفيدين الرقمية**
-    * **الوصف:** تحسين تجربة المستفيدين وضمان سهولة الوصول والاستخدام للخدمات الإلكترونية المقدمة للمستفيدين بجميع فئاتهم و تطبيق ممارسات تعزيز رضا المستفيدين عن طريق الاستماع لآرائهم والاعتماد عليها في تحسين جودة الخدمات وتحسين جودة الإستجابة لطلبات الدعم التقنية.
-9.  **الهدف الاستراتيجي 3.2: تبني احتياجات الأعمال الرقمية**
-    * **الوصف:** الرصد والاستماع لاحتياجات المستفيدين الرقمية وتوثيقها والاستناد إليها لتطوير منتجات رقمية تلبي احتياجاتهم وتوقعاتهم من خلال العمل على تطويرها بطريقة تضمن توفير تجربة رقمية فريدة.
-10. **الهدف الاستراتيجي 4.1: تبني الابتكار واستدامة البيئة الابتكارية**
-    * **الوصف:** تبني الابتكار واستدامة البيئة الابتكارية - ابتكار منتجات وخدمات وحلول ابتكارية وقياس أثر الاستدامة لتلك الحلول الابتكارية ومتابعة تحسينها بشكل مستمر من خلال اعتماد آليات للتعاون والتواصل والشراكة مع جهات ومراكز ومختبرات البحث والابتكار - المشاركة في فعاليات الابتكار المفتوح مثل الهاكاثونات والمسابقات والورش المتخصصة توثيق الأفكار الإبداعية وحالات الاستخدام القابلة للتطبيق.
-11. **الهدف الاستراتيجي 4.2: تطوير الحلول الإبتكارية باستخدام التقنيات الناشئة**
-    * **الوصف:** تطوير الحلول الإبتكارية واستخدام التقنيات الناشئة لتحسين الخدمات الالكترونية بهدف تمكين الخدمات الإسعافية وباقي أعمال الهيئة وإضافة قيمة من أجل بيئة رقمية موثوقة.
----
-**السياق **
-الركائز الاستراتيجية للتحول الرقمي والأهداف المرتبطة بها كما ورد في "البيت الاستراتيجي للتحول الرقمي" وجداول الأهداف:
-1.  **الركيزة: بيئة موثوقة**
-    * الهدف 1.1: تعزيز الأمن والحماية للأنظمة والشبكات
-    * الهدف 1.2: تبني الحوسبة السحابية وتحسين البنية الرقمية
-    * الهدف 1.3: تعزيز كفاءة وموثوقية الخدمات والحلول الرقمية
-    * الهدف 1.4: بيئة رقمية متكاملة
-2.  **الركيزة: منظومة تشغيلية متميزة**
-    * الهدف 2.1: تبني وتفعيل أفضل الممارسات في التحول الرقمي
-    * الهدف 2.2: تعظيم الاستفادة من أنظمة البيانات لدعم اتخاذ القرار
-    * الهدف 2.3: تعزيز وبناء القدرات والكفاءات في التحول الرقمي
-3.  **الركيزة: تجربة رقمية فريدة**
-    * الهدف 3.1: تحسين تجربة المستفيدين الرقمية
-    * الهدف 3.2: تبني احتياجات الأعمال الرقمية
-4.  **الركيزة: حلول ابتكارية** (مشار إليها أيضًا في سياق "كفاءات متميزة ومبدعة")
-    * الهدف 4.1: تبني الابتكار واستدامة البيئة الابتكارية
-    * الهدف 4.2: تطوير الحلول الإبتكارية باستخدام التقنيات الناشئة
----
-**السياق **
-**1. اسم المبادرة ورمزها:** مبادرة تطوير الحلول الرقمية للخدمات الاسعافية (MA01)
-* **وصف المبادرة:** تهدف هذه المبادرة إلى تعزيز البنية الرقمية للخدمات الإسعافية من خلال تطوير الأنظمة والتطبيقات الإلكترونية وتكاملها بالأنظمة الداخلية والخارجية، بهدف تسهيل الوصول إلى الخدمات الرقمية للمستفيدين وتحسين جودة الخدمات الإسعافية وتعزيز الشفافية والحوكمة.
-* **الأهداف الاستراتيجية المرتبطة بالتحول الرقمي:** تحسين تجربة المستفيدين الرقمية؛ تبني احتياجات الأعمال الرقمية؛ بيئة رقمية متكاملة.
-* **أثر المبادرة في سد الفجوات ذات الصلة:** تطوير وتحسين الخدمات الاسعافية الرقمية للمساهمة في تقليل زمن الاستجابة؛ تعزيز موثقية واستدامة الخدمات الاسعافية؛ اتمتتة الخدمات الاسعافية ورفع النضج الرقمي للهيئة؛ تطوير منظومة التكامل الداخلي والخارجي لتحسين جودة التقارير والبيانات؛ تعزيز الامن والمراقبة للسيارات الاسعافية؛ اكتمال منظومة الهيئة الرقمية لتمكين الخدمات الاسعافية؛ تطوير الانظمة والتطبيقات الحالية والمستمرة لتلبي احتياجات تمكين الخدمات الاسعافية؛ رفع رضا منسوبي الهيئة للخدمات الاسعافية من خلال تحسين تجربة المستفيد الرقمية.
-* **إجمالي التكلفة التقديرية للمبادرة:** 79,513,998 ر.س.‏
----------------------------------------------------------------`;
+// تعريف أنواع البيانات للمحادثة
+interface MessagePart {
+  text: string;
+}
+interface Message {
+  role: 'user' | 'model';
+  parts: MessagePart[];
+}
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+// ---- تاريخ المحادثة المبدئي لتعريف النموذج ----
+const initialHistory: Message[] = [
+    { role: "user", parts: [{ text: "من انت ؟" }] },
+    { role: "model", parts: [{ text: "انا مساعد متخصص في تحليل وثائق استراتيجية التحول الرقمي وموائمتها مع رؤية المملكة 2030 وأهدافها لهيئة الهلال الأحمر السعودي." }] },
+];
 
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('API key is not configured on the server.');
+
+function App() {
+  const [messages, setMessages] = useState<Message[]>(initialHistory);
+  const [userInput, setUserInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const chatOutputRef = useRef<HTMLDivElement>(null);
+
+  // للتمرير للأسفل تلقائيًا عند إضافة رسالة جديدة
+  useEffect(() => {
+    if (chatOutputRef.current) {
+        chatOutputRef.current.scrollTop = chatOutputRef.current.scrollHeight;
     }
+  }, [messages, isLoading]);
 
-    const { history, prompt } = req.body as { history: Content[], prompt: string };
+  const sendMessage = async () => {
+    if (!userInput.trim() || isLoading) return;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest",
-      systemInstruction: systemInstructionText,
-    });
+    const userMessage: Message = { role: 'user', parts: [{ text: userInput }] };
+    const currentHistory = [...messages, userMessage];
+    setMessages(currentHistory);
+    const currentInput = userInput;
+    setUserInput('');
+    setIsLoading(true);
+    setError(null);
 
-    const chat = model.startChat({
-      history: history || [],
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE },
-      ],
-    });
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          history: currentHistory.slice(0, -1), // إرسال السجل بدون رسالة المستخدم الحالية
+          prompt: currentInput 
+        }),
+      });
 
-    const result = await chat.sendMessage(prompt);
-    const response = result.response;
-    const text = response.text();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Request failed with status ${response.status}`);
+      }
 
-    return res.status(200).json({ text });
+      const data = await response.json();
+      const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
+      setMessages(prev => [...prev, modelMessage]);
 
-  } catch (error) {
-    console.error('Error in API route:', error);
-    const err = error as Error;
-    return res.status(500).json({ error: err.message || 'An unknown error occurred.' });
-  }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  marked.setOptions({ breaks: true, gfm: true });
+
+  return (
+    <div id="chat-container">
+      <div id="chat-output" ref={chatOutputRef}>
+        {messages.map((msg, index) => (
+          <div key={index} className={`chat-message ${msg.role}-message`}>
+            <div
+              className="message-content"
+              dangerouslySetInnerHTML={{ __html: marked.parse(msg.parts[0].text) as string }}
+            />
+          </div>
+        ))}
+        {isLoading && <div className="chat-message model-message loading"><span>.</span><span>.</span><span>.</span></div>}
+      </div>
+      {error && <div id="error-message">{error}</div>}
+      <div id="chat-input-container">
+        <textarea
+          id="chat-input"
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="اكتب سؤالك هنا..."
+          disabled={isLoading}
+        />
+        <button id="send-button" onClick={sendMessage} disabled={isLoading}>
+          إرسال
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<React.StrictMode><App /></React.StrictMode>);
 }
