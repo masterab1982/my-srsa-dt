@@ -36,19 +36,22 @@ function App() {
     if (!userInput.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', parts: [{ text: userInput }] };
-    const currentHistory = [...messages, userMessage];
-    setMessages(currentHistory);
+    // تحديث واجهة المستخدم فورًا برسالة المستخدم
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
     const currentInput = userInput;
     setUserInput('');
     setIsLoading(true);
     setError(null);
-
+    
     try {
+      // إرسال سجل المحادثة الكامل مع السؤال الجديد
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          history: currentHistory.slice(0, -1), // إرسال السجل بدون رسالة المستخدم الحالية
+          // إرسال السجل الكامل (بما في ذلك رسالة المستخدم الحالية)
+          history: currentMessages.slice(0, -1),
           prompt: currentInput 
         }),
       });
@@ -57,13 +60,16 @@ function App() {
         const errorData = await response.json();
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
-
+      
       const data = await response.json();
       const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
+      // إضافة رد النموذج إلى المحادثة
       setMessages(prev => [...prev, modelMessage]);
 
     } catch (err) {
       setError((err as Error).message);
+      // في حالة الخطأ، يمكن إزالة رسالة المستخدم الأخيرة لمنع التكرار
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
@@ -75,9 +81,10 @@ function App() {
       sendMessage();
     }
   };
-
+  
+  // إعدادات مكتبة marked
   marked.setOptions({ breaks: true, gfm: true });
-
+  
   return (
     <div id="chat-container">
       <div id="chat-output" ref={chatOutputRef}>
@@ -109,6 +116,7 @@ function App() {
   );
 }
 
+// تأكد من أن لديك عنصر div بهذا الـ id في ملف index.html
 const rootElement = document.getElementById('root');
 if (rootElement) {
     const root = ReactDOM.createRoot(rootElement);
