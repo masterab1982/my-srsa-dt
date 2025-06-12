@@ -17,7 +17,6 @@ const initialHistory: Message[] = [
     { role: "model", parts: [{ text: "انا مساعد متخصص في تحليل وثائق استراتيجية التحول الرقمي وموائمتها مع رؤية المملكة 2030 وأهدافها لهيئة الهلال الأحمر السعودي." }] },
 ];
 
-
 function App() {
   const [messages, setMessages] = useState<Message[]>(initialHistory);
   const [userInput, setUserInput] = useState('');
@@ -30,29 +29,25 @@ function App() {
     if (chatOutputRef.current) {
         chatOutputRef.current.scrollTop = chatOutputRef.current.scrollHeight;
     }
-  }, [messages, isLoading]);
+  }, [messages]);
 
   const sendMessage = async () => {
     const currentInput = userInput.trim();
     if (!currentInput || isLoading) return;
 
-    // حفظ السجل الحالي قبل إضافة رسالة المستخدم الجديدة
-    const historyForAPI = [...messages];
-
-    // تحديث الواجهة برسالة المستخدم فورًا
-    const userMessage: Message = { role: 'user', parts: [{ text: currentInput }] };
-    setMessages(prev => [...prev, userMessage]);
-    
-    setUserInput('');
     setIsLoading(true);
     setError(null);
+    
+    // حفظ السجل الحالي قبل إرساله
+    const historyForAPI = [...messages];
+    setUserInput(''); // امسح مربع الإدخال
 
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          history: historyForAPI, // إرسال السجل قبل إضافة رسالة المستخدم الجديدة
+          history: historyForAPI, // إرسال السجل الصحيح
           prompt: currentInput
         }),
       });
@@ -63,10 +58,13 @@ function App() {
       }
       
       const data = await response.json();
-      const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
       
-      // تحديث الواجهة برد النموذج
-      setMessages(prev => [...prev, modelMessage]);
+      // إنشاء رسالة المستخدم ورسالة النموذج
+      const userMessage: Message = { role: 'user', parts: [{ text: currentInput }] };
+      const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
+
+      // تحديث الواجهة بالرسالتين معًا بعد نجاح الطلب
+      setMessages(prev => [...prev, userMessage, modelMessage]);
 
     } catch (err) {
       if (err instanceof Error) {
@@ -74,8 +72,6 @@ function App() {
       } else {
         setError('An unknown error occurred.');
       }
-      // في حالة الخطأ، قم بإزالة رسالة المستخدم التي تم عرضها بشكل متفائل
-      setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
