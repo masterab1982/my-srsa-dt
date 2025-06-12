@@ -50,7 +50,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          // إرسال السجل الكامل (بما في ذلك رسالة المستخدم الحالية)
+          // إرسال السجل الكامل (باستثناء رسالة المستخدم الحالية لتجنب إرسالها مرتين)
           history: currentMessages.slice(0, -1),
           prompt: currentInput 
         }),
@@ -67,8 +67,14 @@ function App() {
       setMessages(prev => [...prev, modelMessage]);
 
     } catch (err) {
-      setError((err as Error).message);
-      // في حالة الخطأ، يمكن إزالة رسالة المستخدم الأخيرة لمنع التكرار
+      // --- هذا هو الجزء الذي تم تعديله ---
+      // طريقة أكثر أمانًا للتعامل مع رسالة الخطأ
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
+      // في حالة الخطأ، أزل رسالة المستخدم الأخيرة لمنعه من المحاولة مرة أخرى بنفس الرسالة
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
