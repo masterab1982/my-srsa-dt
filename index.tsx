@@ -25,7 +25,7 @@ if (!API_KEY) {
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 //const modelName = 'gemini-2.5-flash-preview-04-17';
-  const modelName = "gemini-2.5-pro-preview-06-05";
+  const modelName = "gemini-1.5-flash-latest";
 
 
 const safetySettings = [
