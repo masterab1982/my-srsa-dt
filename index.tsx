@@ -35,24 +35,20 @@ function App() {
   const sendMessage = async () => {
     if (!userInput.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', parts: [{ text: userInput }] };
-    // تحديث واجهة المستخدم فورًا برسالة المستخدم
-    const currentMessages = [...messages, userMessage];
-    setMessages(currentMessages);
     const currentInput = userInput;
-    setUserInput('');
+    const currentHistory = messages;
+
     setIsLoading(true);
     setError(null);
-    
+    setUserInput(''); // امسح مربع الإدخال فورًا لإعطاء شعور بالاستجابة
+
     try {
-      // إرسال سجل المحادثة الكامل مع السؤال الجديد
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          // إرسال السجل الكامل (باستثناء رسالة المستخدم الحالية لتجنب إرسالها مرتين)
-          history: currentMessages.slice(0, -1),
-          prompt: currentInput 
+        body: JSON.stringify({
+          history: currentHistory, // أرسل السجل كما هو
+          prompt: currentInput     // أرسل السؤال الحالي
         }),
       });
 
@@ -62,20 +58,22 @@ function App() {
       }
       
       const data = await response.json();
+
+      // أنشئ رسالة المستخدم ورسالة النموذج معًا بعد نجاح الطلب
+      const userMessage: Message = { role: 'user', parts: [{ text: currentInput }] };
       const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
-      // إضافة رد النموذج إلى المحادثة
-      setMessages(prev => [...prev, modelMessage]);
+
+      // قم بتحديث المحادثة بإضافة الرسالتين معًا
+      setMessages(prev => [...prev, userMessage, modelMessage]);
 
     } catch (err) {
-      // --- هذا هو الجزء الذي تم تعديله ---
-      // طريقة أكثر أمانًا للتعامل مع رسالة الخطأ
       if (err instanceof Error) {
         setError(err.message);
       } else {
         setError('An unknown error occurred.');
       }
-      // في حالة الخطأ، أزل رسالة المستخدم الأخيرة لمنعه من المحاولة مرة أخرى بنفس الرسالة
-      setMessages(prev => prev.slice(0, -1));
+      // في حالة الخطأ، أعد النص الذي كتبه المستخدم إلى مربع الإدخال
+      setUserInput(currentInput);
     } finally {
       setIsLoading(false);
     }
