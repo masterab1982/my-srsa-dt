@@ -11,30 +11,6 @@ interface Message {
   parts: MessagePart[];
 }
 
-// --- السياق الكامل والتعليمات الأساسية ---
-// سيتم إرسال هذا السياق مع كل طلب ولكنه لن يظهر في واجهة المستخدم
-const FULL_CONTEXT_AND_INSTRUCTIONS = `**التعليمات للنموذج:**
-انا مساعد متخصص في تحليل وثائق استراتيجة التحول الرقمي وموؤمتها مع رؤية المملكة 2030 واهدفها لهيئة الهلال الاحمر السعودي. مهمتك هي الإجابة على السؤال التالي بدقة وتفصيل، إذا كانت بعض جوانب السؤال لا يمكن الإجابة عليها من السياق، اذكر ذلك بوضوح. قم بتنظيم الإجابة بحيث يتم العرض بشكل واضح ومرتب. **يرجى استخدام تنسيق Markdown لتقديم الإجابة بشكل منظم، مثل القوائم النقطية أو الرقمية، والنص العريض، والجداول إذا كانت مناسبة.** ولاتذكر بناء على السياق في الاجابة . في حال لايتضمن السياق الاجابة اذكر انه لايمكنك الاجابة على هذا السؤال حاليا ولاتذكر السياق ومايوجد فيه نهائيا
----
-**السياق **
-**الرؤية العامة للتحول الرقمي (كمقدمة للسياق إذا كانت ذات صلة مباشرة بالأهداف):**
-خدمات إسعافية موثوقة ومستدامة من خلال حلول رقمية متميزة وإبداعية.
-**الرسالة العامة للتحول الرقمي (كمقدمة للسياق إذا كانت ذات صلة مباشرة بالأهداف):**
-نسعى إلى التميز والإبداع في الحلول الرقمية لتمكين الريادة في حفظ الأرواح وتقديم خدمات إسعافية موثوقة ومستدامة.
-**الأهداف الاستراتيجية للتحول الرقمي ووصفها:**
-1.  **الهدف الاستراتيجي 1.1: تعزيز الأمن والحماية للأنظمة والشبكات**
-2.  **الهدف الاستراتيجي 1.2: تبني الحوسبة السحابية وتحسين البنية الرقمية**
-3.  **الهدف الاستراتيجي 1.3: تعزيز كفاءة وموثوقية الخدمات والحلول الرقمية**
-4.  **الهدف الاستراتيجي 1.4: بيئة رقمية متكاملة**
-5.  **الهدف الاستراتيجي 2.1: تبني وتفعيل أفضل الممارسات في التحول الرقمي**
-6.  **الهدف الاستراتيجي 2.2: تعظيم الاستفادة من أنظمة البيانات لدعم اتخاذ القرار**
-7.  **الهدف الاستراتيجي 2.3: تعزيز وبناء القدرات والكفاءات في التحول الرقمي**
-8.  **الهدف الاستراتيجي 3.1: تحسين تجربة المستفيدين الرقمية**
-9.  **الهدف الاستراتيجي 3.2: تبني احتياجات الأعمال الرقمية**
-10. **الهدف الاستراتيجي 4.1: تبني الابتكار واستدامة البيئة الابتكارية**
-11. **الهدف الاستراتيجي 4.2: تطوير الحلول الإبتكارية باستخدام التقنيات الناشئة**
----`;
-
 // ---- تاريخ المحادثة المبدئي الذي يظهر للمستخدم ----
 const initialDisplayedHistory: Message[] = [
     { role: "user", parts: [{ text: "من انت ؟" }] },
@@ -48,6 +24,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const chatOutputRef = useRef<HTMLDivElement>(null);
 
+  // للتمرير للأسفل تلقائيًا عند إضافة رسالة جديدة
   useEffect(() => {
     if (chatOutputRef.current) {
         chatOutputRef.current.scrollTop = chatOutputRef.current.scrollHeight;
@@ -60,39 +37,41 @@ function App() {
 
     setIsLoading(true);
     setError(null);
+    
+    // السجل الذي سيتم إرساله إلى الخادم هو المحادثة الظاهرة حاليًا
+    const historyForAPI = [...messages];
+    
+    // أضف رسالة المستخدم الجديدة إلى الواجهة فورًا
+    const userMessage: Message = { role: 'user', parts: [{ text: currentInput }] };
+    setMessages(prev => [...prev, userMessage]);
     setUserInput('');
 
-    // إنشاء رسالة المستخدم الجديدة لعرضها في الواجهة
-    const userMessageForUI: Message = { role: 'user', parts: [{ text: currentInput }] };
-    
-    // إنشاء سجل المحادثة الكامل الذي سيتم إرساله إلى API
-    const conversationForAPI: Message[] = [
-        { role: 'user', parts: [{ text: FULL_CONTEXT_AND_INSTRUCTIONS }] },
-        // ... يمكنك إضافة رسائل "تدريبية" أخرى هنا إذا أردت
-        ...messages, // إضافة المحادثة الظاهرة الحالية
-        userMessageForUI // إضافة سؤال المستخدم الجديد
-    ];
 
-    // تحديث الواجهة برسالة المستخدم فورًا
-    setMessages(prev => [...prev, userMessageForUI]);
-    
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation: conversationForAPI }),
+        body: JSON.stringify({
+          history: historyForAPI,
+          prompt: currentInput
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        // إذا فشل الطلب، قم بإزالة رسالة المستخدم التي تم إضافتها
+        setMessages(prev => prev.slice(0, -1));
         throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
       
       const data = await response.json();
-      const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
       
-      // تحديث الواجهة برد النموذج
-      setMessages(prev => [...prev, modelMessage]);
+      const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
+
+      // تحديث الواجهة برد النموذج بعد نجاح الطلب
+      // نستبدل رسالة المستخدم الأخيرة التي أضفناها برسالة المستخدم + رد النموذج
+      setMessages(prev => [...prev.slice(0, -1), userMessage, modelMessage]);
+
 
     } catch (err) {
       if (err instanceof Error) {
@@ -100,8 +79,8 @@ function App() {
       } else {
         setError('An unknown error occurred.');
       }
-      // في حالة الخطأ، أزل رسالة المستخدم التي تم عرضها
-       setMessages(prev => prev.slice(0, -1));
+      // في حالة الخطأ، أعد النص الذي كتبه المستخدم إلى مربع الإدخال
+      setUserInput(currentInput); 
     } finally {
       setIsLoading(false);
     }
