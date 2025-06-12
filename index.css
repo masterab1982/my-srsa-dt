@@ -1,0 +1,262 @@
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background-color: #f4f4f8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #333;
+}
+
+#chat-container {
+    width: 100%;
+    max-width: 800px;
+    height: 90vh;
+    max-height: 900px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#chat-output {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-message {
+    display: flex;
+    max-width: 85%; /* Adjusted for potentially wider content like tables */
+    word-wrap: break-word;
+}
+
+.message-content {
+    padding: 10px 15px;
+    border-radius: 18px;
+    line-height: 1.6; /* Increased for better readability */
+    text-align: right; /* RTL text alignment */
+}
+
+/* Markdown specific styling */
+.message-content strong, .message-content b {
+    font-weight: 600;
+}
+
+.message-content em, .message-content i {
+    font-style: italic;
+}
+
+.message-content ul, .message-content ol {
+    padding-right: 20px; /* Indentation for RTL lists */
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+.message-content ul li, .message-content ol li {
+    margin-bottom: 4px;
+}
+
+.message-content p {
+    margin-top: 0;
+    margin-bottom: 8px; /* Space between paragraphs */
+}
+.message-content p:last-child {
+    margin-bottom: 0;
+}
+
+.message-content h1, .message-content h2, .message-content h3, .message-content h4, .message-content h5, .message-content h6 {
+    margin-top: 10px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.message-content pre {
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    direction: ltr; /* Code blocks are usually LTR */
+    text-align: left;
+}
+
+.message-content code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+    background-color: #f0f0f0;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+.message-content pre code {
+    background-color: transparent;
+    padding: 0;
+}
+
+.message-content blockquote {
+    border-right: 3px solid #007bff; /* RTL: border on the right */
+    padding-right: 10px;
+    margin-right: 0;
+    margin-left: 0; /* Clear default LTR margin */
+    color: #555;
+    font-style: italic;
+}
+
+.message-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+}
+
+.message-content th, .message-content td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: right; /* Default for table cells in RTL */
+}
+
+.message-content th {
+    background-color: #f2f2f2;
+    font-weight: 600;
+}
+
+
+.user-message {
+    align-self: flex-start; /* RTL: user messages on the right */
+}
+
+.user-message .message-content {
+    background-color: #007bff;
+    color: white;
+    border-top-right-radius: 4px; /* Keep tail on the right */
+}
+/* Ensure Markdown elements in user messages inherit color */
+.user-message .message-content code {
+    background-color: rgba(255,255,255,0.1);
+    color: white;
+}
+.user-message .message-content pre {
+     background-color: rgba(255,255,255,0.05);
+}
+.user-message .message-content blockquote {
+    border-right-color: rgba(255,255,255,0.5);
+    color: #e0e0e0;
+}
+
+
+.model-message {
+    align-self: flex-end; /* RTL: model messages on the left */
+}
+
+.model-message .message-content {
+    background-color: #e9ecef;
+    color: #333;
+    border-top-left-radius: 4px; /* Keep tail on the left */
+}
+/* Ensure Markdown elements in model messages have appropriate contrast */
+.model-message .message-content code {
+    background-color: #d1d5db; /* Slightly darker than bubble for contrast */
+}
+.model-message .message-content pre {
+    background-color: #dcdfe2;
+}
+.model-message .message-content blockquote {
+    border-right-color: #007bff; /* Use primary color for model's blockquote border */
+    background-color: #f8f9fa; /* Slight background for blockquote */
+}
+.model-message .message-content th {
+    background-color: #dfe2e5;
+}
+.model-message .message-content td, .model-message .message-content th {
+    border: 1px solid #c8ced3;
+}
+
+
+.error-message .message-content {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #c62828;
+}
+
+
+#input-area {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid #e0e0e0;
+    background-color: #f9f9f9;
+}
+
+#chat-input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    margin-left: 10px; /* RTL: margin on the left of input, button is to its left */
+    font-size: 16px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    text-align: right; /* RTL text alignment for input */
+}
+
+#chat-input:focus {
+    border-color: #007bff;
+}
+
+#send-button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+}
+
+#send-button:hover {
+    background-color: #0056b3;
+}
+
+#send-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+#loading-indicator, #error-message {
+    padding: 10px 20px;
+    text-align: center;
+    font-style: italic;
+    color: #555;
+}
+
+#error-message {
+    color: #c62828;
+    background-color: #ffebee;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* Scrollbar styling */
+#chat-output::-webkit-scrollbar {
+    width: 8px;
+}
+
+#chat-output::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+#chat-output::-webkit-scrollbar-thumb {
+    background: #c5c5c5;
+    border-radius: 10px;
+}
+
+#chat-output::-webkit-scrollbar-thumb:hover {
+    background: #a5a5a5;
+}

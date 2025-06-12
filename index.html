@@ -1,0 +1,34 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini API Chat</title>
+    <link rel="stylesheet" href="index.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
+          "marked": "https://esm.sh/marked@^12.0.2"
+        }
+      }
+    </script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-output">
+            <!-- Chat messages will appear here -->
+        </div>
+        <div id="loading-indicator" style="display: none;">جاري إنشاء الرد...</div>
+        <div id="error-message" style="display: none; color: red;"></div>
+        <div id="input-area">
+            <textarea id="chat-input" placeholder="اكتب سؤالك هنا ..." rows="3"></textarea>
+            <button id="send-button">إرسال</button>
+        </div>
+    </div>
+    <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
