@@ -33,22 +33,27 @@ function App() {
   }, [messages, isLoading]);
 
   const sendMessage = async () => {
-    if (!userInput.trim() || isLoading) return;
+    const currentInput = userInput.trim();
+    if (!currentInput || isLoading) return;
 
-    const currentInput = userInput;
-    const currentHistory = messages;
+    // حفظ السجل الحالي قبل إضافة رسالة المستخدم الجديدة
+    const historyForAPI = [...messages];
 
+    // تحديث الواجهة برسالة المستخدم فورًا
+    const userMessage: Message = { role: 'user', parts: [{ text: currentInput }] };
+    setMessages(prev => [...prev, userMessage]);
+    
+    setUserInput('');
     setIsLoading(true);
     setError(null);
-    setUserInput(''); // امسح مربع الإدخال فورًا لإعطاء شعور بالاستجابة
 
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          history: currentHistory, // أرسل السجل كما هو
-          prompt: currentInput     // أرسل السؤال الحالي
+          history: historyForAPI, // إرسال السجل قبل إضافة رسالة المستخدم الجديدة
+          prompt: currentInput
         }),
       });
 
@@ -58,13 +63,10 @@ function App() {
       }
       
       const data = await response.json();
-
-      // أنشئ رسالة المستخدم ورسالة النموذج معًا بعد نجاح الطلب
-      const userMessage: Message = { role: 'user', parts: [{ text: currentInput }] };
       const modelMessage: Message = { role: 'model', parts: [{ text: data.text }] };
-
-      // قم بتحديث المحادثة بإضافة الرسالتين معًا
-      setMessages(prev => [...prev, userMessage, modelMessage]);
+      
+      // تحديث الواجهة برد النموذج
+      setMessages(prev => [...prev, modelMessage]);
 
     } catch (err) {
       if (err instanceof Error) {
@@ -72,8 +74,8 @@ function App() {
       } else {
         setError('An unknown error occurred.');
       }
-      // في حالة الخطأ، أعد النص الذي كتبه المستخدم إلى مربع الإدخال
-      setUserInput(currentInput);
+      // في حالة الخطأ، قم بإزالة رسالة المستخدم التي تم عرضها بشكل متفائل
+      setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
