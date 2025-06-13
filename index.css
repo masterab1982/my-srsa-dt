@@ -48,17 +48,16 @@ body {
 
 .chat-message {
     display: flex;
-    flex-direction: column; /* Allow sources to stack below content */
-    max-width: 85%; 
+    max-width: 85%; /* Adjusted for potentially wider content like tables */
     word-wrap: break-word;
 }
 
 .message-content {
     padding: 10px 15px;
     border-radius: 18px;
-    line-height: 1.6; 
-    text-align: right; 
-    font-size: 11px; 
+    line-height: 1.6; /* Increased for better readability */
+    text-align: right; /* RTL text alignment */
+    font-size: 11px; /* Reduced font size for chat messages */
 }
 
 /* Markdown specific styling */
@@ -71,7 +70,7 @@ body {
 }
 
 .message-content ul, .message-content ol {
-    padding-right: 20px; 
+    padding-right: 20px; /* Indentation for RTL lists */
     margin-top: 5px;
     margin-bottom: 5px;
 }
@@ -81,7 +80,7 @@ body {
 
 .message-content p {
     margin-top: 0;
-    margin-bottom: 8px; 
+    margin-bottom: 8px; /* Space between paragraphs */
 }
 .message-content p:last-child {
     margin-bottom: 0;
@@ -98,13 +97,13 @@ body {
     padding: 10px;
     border-radius: 4px;
     overflow-x: auto;
-    direction: ltr; 
+    direction: ltr; /* Code blocks are usually LTR */
     text-align: left;
 }
 
 .message-content code {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-    font-size: 0.9em; 
+    font-size: 0.9em; /* Relative to 11px */
     background-color: #f0f0f0;
     padding: 2px 4px;
     border-radius: 3px;
@@ -115,10 +114,10 @@ body {
 }
 
 .message-content blockquote {
-    border-right: 3px solid #007bff; 
+    border-right: 3px solid #007bff; /* RTL: border on the right */
     padding-right: 10px;
     margin-right: 0;
-    margin-left: 0; 
+    margin-left: 0; /* Clear default LTR margin */
     color: #555;
     font-style: italic;
 }
@@ -128,13 +127,13 @@ body {
     border-collapse: collapse;
     margin-top: 10px;
     margin-bottom: 10px;
-    font-size: 0.95em; 
+    font-size: 0.95em; /* Relative to 11px */
 }
 
 .message-content th, .message-content td {
     border: 1px solid #ddd;
     padding: 8px;
-    text-align: right; 
+    text-align: right; /* Default for table cells in RTL */
 }
 
 .message-content th {
@@ -144,15 +143,15 @@ body {
 
 
 .user-message {
-    align-self: flex-start; 
+    align-self: flex-start; /* RTL: user messages on the right */
 }
 
 .user-message .message-content {
     background-color: #007bff;
     color: white;
-    border-top-right-radius: 4px; 
+    border-top-right-radius: 4px; /* Keep tail on the right */
 }
-
+/* Ensure Markdown elements in user messages inherit color */
 .user-message .message-content code {
     background-color: rgba(255,255,255,0.1);
     color: white;
@@ -167,72 +166,30 @@ body {
 
 
 .model-message {
-    align-self: flex-end; 
+    align-self: flex-end; /* RTL: model messages on the left */
 }
 
 .model-message .message-content {
     background-color: #e9ecef;
     color: #333;
-    border-top-left-radius: 4px; 
+    border-top-left-radius: 4px; /* Keep tail on the left */
 }
-
+/* Ensure Markdown elements in model messages have appropriate contrast */
 .model-message .message-content code {
-    background-color: #d1d5db; 
+    background-color: #d1d5db; /* Slightly darker than bubble for contrast */
 }
 .model-message .message-content pre {
     background-color: #dcdfe2;
 }
 .model-message .message-content blockquote {
-    border-right-color: #007bff; 
-    background-color: #f8f9fa; 
+    border-right-color: #007bff; /* Use primary color for model's blockquote border */
+    background-color: #f8f9fa; /* Slight background for blockquote */
 }
 .model-message .message-content th {
     background-color: #dfe2e5;
 }
 .model-message .message-content td, .model-message .message-content th {
     border: 1px solid #c8ced3;
-}
-
-/* Styling for grounding sources */
-.message-sources {
-    font-size: 0.85em; /* Smaller than main message text */
-    margin-top: 8px;
-    padding: 8px 15px;
-    background-color: #f8f9fa; /* Slightly different background */
-    border-radius: 0 0 12px 12px; /* Match message bubble rounding */
-    border-top: 1px solid #e0e0e0;
-    text-align: right;
-}
-.model-message .message-sources { /* Specific to model messages */
-    border-radius: 0 0 12px 12px; /* Ensure correct rounding under model bubble */
-     max-width: calc(100% - 0px); /* Ensure it doesn't overflow the parent bubble */
-    align-self: stretch; /* Make it take the width of the content above it */
-}
-
-
-.message-sources h5 {
-    margin: 0 0 5px 0;
-    font-weight: 600;
-    color: #555;
-}
-
-.message-sources ul {
-    list-style-type: disc;
-    padding-right: 20px; /* Indentation for RTL */
-    margin: 0;
-}
-
-.message-sources li {
-    margin-bottom: 4px;
-}
-
-.message-sources a {
-    color: #0056b3;
-    text-decoration: none;
-}
-
-.message-sources a:hover {
-    text-decoration: underline;
 }
 
 
@@ -245,9 +202,9 @@ body {
 #suggested-questions-area {
     padding: 10px 20px;
     border-bottom: 1px solid #e0e0e0;
-    border-top: 1px solid #e0e0e0; 
+    border-top: 1px solid #e0e0e0; /* Added top border for consistency */
     background-color: #f9f9f9;
-    flex-shrink: 0; 
+    flex-shrink: 0; /* Prevent from shrinking */
 }
 
 #suggested-questions-area h4 {
@@ -271,7 +228,7 @@ body {
     border: 1px solid #007bff; 
     border-radius: 16px; 
     cursor: pointer;
-    font-size: 11px; 
+    font-size: 11px; /* Updated font size */
     transition: background-color 0.2s, color 0.2s;
     text-align: right;
 }
@@ -284,24 +241,24 @@ body {
 
 #input-area {
     display: flex;
-    align-items: center; 
+    align-items: center; /* Vertically align items */
     padding: 15px;
     border-top: 1px solid #e0e0e0;
     background-color: #f9f9f9;
-    flex-shrink: 0; 
+    flex-shrink: 0; /* Prevent from shrinking */
 }
 
 #chat-input {
     flex-grow: 1;
-    padding: 6px 12px; 
+    padding: 6px 12px; /* Reduced padding */
     border: 1px solid #ccc;
     border-radius: 20px;
-    margin-left: 10px; 
-    font-size: 11px; 
+    margin-left: 10px; /* RTL: margin on the left of input, button is to its left */
+    font-size: 11px; /* Updated font size */
     resize: none;
     outline: none;
     transition: border-color 0.2s;
-    text-align: right; 
+    text-align: right; /* RTL text alignment for input */
 }
 
 #chat-input:focus {
@@ -309,18 +266,18 @@ body {
 }
 
 #send-button {
-    padding: 6px 15px; 
-    background-color: #c31e24; 
+    padding: 6px 15px; /* Reduced padding */
+    background-color: #c31e24; /* Updated to match logo red */
     color: white;
     border: none;
     border-radius: 20px;
     cursor: pointer;
-    font-size: 13px; 
+    font-size: 13px; /* Reduced font size */
     transition: background-color 0.2s;
 }
 
 #send-button:hover {
-    background-color: #a0181e; 
+    background-color: #a0181e; /* Darker red for hover */
 }
 
 #send-button:disabled {
@@ -333,7 +290,7 @@ body {
     text-align: center;
     font-style: italic;
     color: #555;
-    flex-shrink: 0; 
+    flex-shrink: 0; /* Prevent from shrinking */
 }
 
 #error-message {
