@@ -57,7 +57,7 @@ body {
     border-radius: 18px;
     line-height: 1.6; /* Increased for better readability */
     text-align: right; /* RTL text alignment */
-    font-size: 12px; /* Reduced font size for chat messages */
+    font-size: 11px; /* Reduced font size for chat messages */
 }
 
 /* Markdown specific styling */
@@ -103,7 +103,7 @@ body {
 
 .message-content code {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-    font-size: 0.9em; /* Relative to 12px */
+    font-size: 0.9em; /* Relative to 11px */
     background-color: #f0f0f0;
     padding: 2px 4px;
     border-radius: 3px;
@@ -127,7 +127,7 @@ body {
     border-collapse: collapse;
     margin-top: 10px;
     margin-bottom: 10px;
-    font-size: 0.95em; /* Relative to 12px */
+    font-size: 0.95em; /* Relative to 11px */
 }
 
 .message-content th, .message-content td {
@@ -228,7 +228,7 @@ body {
     border: 1px solid #007bff; 
     border-radius: 16px; 
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 11px; /* Updated font size */
     transition: background-color 0.2s, color 0.2s;
     text-align: right;
 }
@@ -241,6 +241,7 @@ body {
 
 #input-area {
     display: flex;
+    align-items: center; /* Vertically align items */
     padding: 15px;
     border-top: 1px solid #e0e0e0;
     background-color: #f9f9f9;
@@ -249,11 +250,11 @@ body {
 
 #chat-input {
     flex-grow: 1;
-    padding: 10px 15px;
+    padding: 6px 12px; /* Reduced padding */
     border: 1px solid #ccc;
     border-radius: 20px;
     margin-left: 10px; /* RTL: margin on the left of input, button is to its left */
-    font-size: 16px;
+    font-size: 11px; /* Updated font size */
     resize: none;
     outline: none;
     transition: border-color 0.2s;
@@ -265,18 +266,18 @@ body {
 }
 
 #send-button {
-    padding: 10px 20px;
-    background-color: #007bff;
+    padding: 6px 15px; /* Reduced padding */
+    background-color: #c31e24; /* Updated to match logo red */
     color: white;
     border: none;
     border-radius: 20px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 13px; /* Reduced font size */
     transition: background-color 0.2s;
 }
 
 #send-button:hover {
-    background-color: #0056b3;
+    background-color: #a0181e; /* Darker red for hover */
 }
 
 #send-button:disabled {
