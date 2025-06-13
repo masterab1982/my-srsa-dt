@@ -57,6 +57,7 @@ body {
     border-radius: 18px;
     line-height: 1.6; /* Increased for better readability */
     text-align: right; /* RTL text alignment */
+    font-size: 12px; /* Reduced font size for chat messages */
 }
 
 /* Markdown specific styling */
@@ -102,7 +103,7 @@ body {
 
 .message-content code {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-    font-size: 0.9em;
+    font-size: 0.9em; /* Relative to 12px */
     background-color: #f0f0f0;
     padding: 2px 4px;
     border-radius: 3px;
@@ -126,7 +127,7 @@ body {
     border-collapse: collapse;
     margin-top: 10px;
     margin-bottom: 10px;
-    font-size: 0.95em;
+    font-size: 0.95em; /* Relative to 12px */
 }
 
 .message-content th, .message-content td {
