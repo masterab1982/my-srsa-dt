@@ -1,68 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    background-color: #f4f4f8;
+    background-color: #f0f0f0; /* Light gray background for the page */
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     color: #333;
+    direction: rtl; /* Explicitly set direction for RTL */
 }
 
 #chat-container {
     width: 100%;
     max-width: 800px;
     height: 90vh;
-    max-height: 900px; /* Max height can be adjusted if needed */
-    background-color: #fff;
+    max-height: 900px; 
+    background-color: #fff; /* Chat area background is white */
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Softer shadow */
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
+#chat-container *, #chat-container *::before, #chat-container *::after {
+    box-sizing: border-box;
+}
+
 
 #chat-header {
-    padding: 10px; /* Reduced padding slightly */
-    text-align: center;
+    padding: 15px; 
     border-bottom: 1px solid #e0e0e0;
-    background-color: #fff; /* Keep header background consistent or use a brand color if appropriate */
-    flex-shrink: 0; /* Prevent header from shrinking */
+    background-color: #F2F2F2; /* Changed header background to light gray */
+    flex-shrink: 0; 
+    min-height: 90px; /* Adjusted for larger logo */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-#app-logo {
-    max-height: 60px; /* Adjusted max-height */
-    width: auto;
-    object-fit: contain; /* Ensures logo scales nicely within bounds */
+#header-logo {
+    height: 60px; /* Increased logo size */
+    width: auto; /* Maintain aspect ratio */
+    flex-shrink: 0; /* Prevent logo from shrinking */
 }
+
+#header-text-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Right align text lines */
+}
+
+#header-title {
+    font-size: 1.2em; 
+    font-weight: 700; /* Tajawal Bold */
+    color: #1C1C1E;   
+    text-align: right;
+    margin-bottom: 4px; 
+    line-height: 1.3;
+}
+
+#header-subtitle {
+    font-size: 0.85em;
+    font-weight: 500; /* Tajawal Medium */
+    color: #636366;   
+    text-align: right;
+    line-height: 1.3;
+}
+
 
 #chat-output {
     flex-grow: 1;
-    padding: 20px;
+    padding: 15px; 
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px; 
+    background-color: #fff; 
 }
 
 .chat-message {
     display: flex;
-    max-width: 85%; /* Adjusted for potentially wider content like tables */
+    flex-direction: column; 
+    max-width: 75%; 
     word-wrap: break-word;
 }
 
 .message-content {
-    padding: 10px 15px;
-    border-radius: 18px;
-    line-height: 1.6; /* Increased for better readability */
-    text-align: right; /* RTL text alignment */
-    font-size: 11px; /* Reduced font size for chat messages */
+    padding: 10px 14px; 
+    border-radius: 18px; 
+    line-height: 1.5;   
+    text-align: right;
+    font-size: 1rem; 
 }
 
-/* Markdown specific styling */
 .message-content strong, .message-content b {
-    font-weight: 600;
+    font-weight: 700; /* Tajawal bold */
 }
 
 .message-content em, .message-content i {
@@ -70,126 +104,188 @@ body {
 }
 
 .message-content ul, .message-content ol {
-    padding-right: 20px; /* Indentation for RTL lists */
-    margin-top: 5px;
-    margin-bottom: 5px;
+    padding-right: 25px; 
+    margin-top: 0.8em;    
+    margin-bottom: 0.8em; 
 }
-.message-content ul li, .message-content ol li {
-    margin-bottom: 4px;
+
+.message-content li {
+    margin-bottom: 0.5em; 
+    line-height: 1.5; 
+}
+
+.message-content li p {
+    margin-top: 0.1em;
+    margin-bottom: 0.1em;
+}
+.message-content li p:last-child {
+    margin-bottom: 0;
+}
+
+.message-content ul ul,
+.message-content ul ol,
+.message-content ol ul,
+.message-content ol ol {
+    margin-top: 0.4em;   
+    margin-bottom: 0.5em; 
+    padding-right: 20px;  
 }
 
 .message-content p {
     margin-top: 0;
-    margin-bottom: 8px; /* Space between paragraphs */
+    margin-bottom: 0.5em; 
 }
 .message-content p:last-child {
     margin-bottom: 0;
 }
 
 .message-content h1, .message-content h2, .message-content h3, .message-content h4, .message-content h5, .message-content h6 {
-    margin-top: 10px;
-    margin-bottom: 5px;
-    font-weight: 600;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: 700; /* Tajawal bold */
+    line-height: 1.3;
 }
+.message-content h1 { font-size: 1.5em; }
+.message-content h2 { font-size: 1.3em; }
+.message-content h3 { font-size: 1.15em; }
+.message-content h4 { font-size: 1em; }
+
 
 .message-content pre {
-    background-color: #f0f0f0;
-    padding: 10px;
-    border-radius: 4px;
+    background-color: #f0f0f0; 
+    padding: 0.8em 1em;
+    border-radius: 6px; 
     overflow-x: auto;
-    direction: ltr; /* Code blocks are usually LTR */
+    direction: ltr;
     text-align: left;
+    margin: 0.8em 0; 
+    font-size: 0.9rem;
+    border: 1px solid #e0e0e0; 
 }
 
-.message-content code {
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-    font-size: 0.9em; /* Relative to 11px */
-    background-color: #f0f0f0;
-    padding: 2px 4px;
-    border-radius: 3px;
+.message-content code { 
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; 
+    font-size: 0.9rem;
+    background-color: rgba(0,0,0,0.05); 
+    padding: 0.15em 0.4em; 
+    border-radius: 4px;
+    color: #333; 
 }
-.message-content pre code {
+.message-content pre code { 
     background-color: transparent;
     padding: 0;
+    font-size: inherit; 
+    color: inherit;
+    border-radius: 0;
+    border: none;
 }
 
 .message-content blockquote {
-    border-right: 3px solid #007bff; /* RTL: border on the right */
-    padding-right: 10px;
-    margin-right: 0;
-    margin-left: 0; /* Clear default LTR margin */
+    border-right: 3px solid #C8102E; /* SRCA Red accent */
+    padding: 0.6em 12px;
+    margin: 0.8em 0; 
     color: #555;
+    background-color: #f8f9fa;
     font-style: italic;
 }
 
 .message-content table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    font-size: 0.95em; /* Relative to 11px */
+    margin: 1em 0; 
+    font-size: 0.9rem;
+    box-shadow: none; 
 }
 
 .message-content th, .message-content td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: right; /* Default for table cells in RTL */
+    border: 1px solid #e0e0e0; 
+    padding: 0.6em 0.8em; 
+    text-align: right;
 }
 
 .message-content th {
-    background-color: #f2f2f2;
-    font-weight: 600;
+    background-color: #f8f9fa; 
+    font-weight: 700; /* Tajawal bold */
+    color: #333;
 }
 
-
 .user-message {
-    align-self: flex-start; /* RTL: user messages on the right */
+    align-self: flex-start; 
 }
 
 .user-message .message-content {
-    background-color: #007bff;
+    background-color: #C8102E; /* SRCA Red */
     color: white;
-    border-top-right-radius: 4px; /* Keep tail on the right */
+    border-radius: 5px 18px 18px 18px; 
 }
-/* Ensure Markdown elements in user messages inherit color */
+
 .user-message .message-content code {
-    background-color: rgba(255,255,255,0.1);
-    color: white;
+    background-color: rgba(255,255,255,0.25); /* Adjusted for red background */
+    color: #fff;
 }
 .user-message .message-content pre {
-     background-color: rgba(255,255,255,0.05);
-}
-.user-message .message-content blockquote {
-    border-right-color: rgba(255,255,255,0.5);
-    color: #e0e0e0;
+     background-color: rgba(0,0,0,0.15); /* Adjusted for red background */
+     border-color: rgba(255,255,255,0.2);
 }
 
 
 .model-message {
-    align-self: flex-end; /* RTL: model messages on the left */
+    align-self: flex-end; 
 }
 
 .model-message .message-content {
-    background-color: #e9ecef;
-    color: #333;
-    border-top-left-radius: 4px; /* Keep tail on the left */
+    background-color: #E5E5EA; 
+    color: black;
+    border-radius: 18px 5px 18px 18px; 
 }
-/* Ensure Markdown elements in model messages have appropriate contrast */
+
 .model-message .message-content code {
-    background-color: #d1d5db; /* Slightly darker than bubble for contrast */
+    background-color: rgba(0,0,0,0.08); 
+    color: #000;
 }
 .model-message .message-content pre {
-    background-color: #dcdfe2;
+    background-color: #DCDCDC; 
+    border-color: #cfd3d7;
 }
-.model-message .message-content blockquote {
-    border-right-color: #007bff; /* Use primary color for model's blockquote border */
-    background-color: #f8f9fa; /* Slight background for blockquote */
+
+.message-sources {
+    font-size: 0.85em; 
+    margin-top: 8px;
+    padding: 8px 15px;
+    background-color: #f8f9fa; 
+    border-radius: 0 0 12px 12px; 
+    border-top: 1px solid #e0e0e0;
+    text-align: right;
 }
-.model-message .message-content th {
-    background-color: #dfe2e5;
+.model-message .message-sources { 
+    border-radius: 0 0 12px 12px; 
+    max-width: calc(100% - 0px); 
+    align-self: stretch; 
 }
-.model-message .message-content td, .model-message .message-content th {
-    border: 1px solid #c8ced3;
+
+.message-sources h5 {
+    margin: 0 0 5px 0;
+    font-weight: 700; 
+    color: #555;
+}
+
+.message-sources ul {
+    list-style-type: disc;
+    padding-right: 20px; 
+    margin: 0;
+}
+
+.message-sources li {
+    margin-bottom: 4px;
+}
+
+.message-sources a {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+.message-sources a:hover {
+    text-decoration: underline;
 }
 
 
@@ -202,95 +298,113 @@ body {
 #suggested-questions-area {
     padding: 10px 20px;
     border-bottom: 1px solid #e0e0e0;
-    border-top: 1px solid #e0e0e0; /* Added top border for consistency */
+    border-top: 1px solid #e0e0e0;
     background-color: #f9f9f9;
-    flex-shrink: 0; /* Prevent from shrinking */
+    flex-shrink: 0;
+    display: none !important; 
 }
 
 #suggested-questions-area h4 {
     margin-top: 0;
     margin-bottom: 10px;
     font-size: 1em;
-    font-weight: 600;
+    font-weight: 700; 
     color: #333;
+    text-align: right; /* Ensure RTL alignment */
 }
 
 #suggested-questions-buttons {
     display: flex;
-    flex-wrap: wrap; 
-    gap: 8px; 
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .suggested-question-btn {
     padding: 8px 12px;
-    background-color: #e9ecef; 
-    color: #007bff; 
-    border: 1px solid #007bff; 
-    border-radius: 16px; 
+    background-color: #e9ecef;
+    color: #C8102E; /* SRCA Red for text */
+    border: 1px solid #C8102E; /* SRCA Red for border */
+    border-radius: 16px;
     cursor: pointer;
-    font-size: 11px; /* Updated font size */
+    font-size: 0.85rem; 
     transition: background-color 0.2s, color 0.2s;
     text-align: right;
+    font-family: 'Tajawal', sans-serif; 
 }
 
 .suggested-question-btn:hover {
-    background-color: #007bff;
+    background-color: #C8102E; /* SRCA Red for background */
     color: white;
 }
 
 
 #input-area {
     display: flex;
-    align-items: center; /* Vertically align items */
-    padding: 15px;
-    border-top: 1px solid #e0e0e0;
-    background-color: #f9f9f9;
-    flex-shrink: 0; /* Prevent from shrinking */
+    align-items: center;
+    padding: 10px; 
+    border-top: 1px solid #DCDCDC; 
+    background-color: #F2F2F2; 
+    flex-shrink: 0;
 }
 
 #chat-input {
     flex-grow: 1;
-    padding: 6px 12px; /* Reduced padding */
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    margin-left: 10px; /* RTL: margin on the left of input, button is to its left */
-    font-size: 11px; /* Updated font size */
+    padding: 8px 14px; 
+    border: 1px solid #CECED0; 
+    border-radius: 18px; 
+    margin-right: 8px; 
+    font-size: 1rem; 
     resize: none;
     outline: none;
     transition: border-color 0.2s;
-    text-align: right; /* RTL text alignment for input */
+    text-align: right;
+    background-color: white; 
+    line-height: 1.4;
+    min-height: 38px; 
+    font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
 }
 
 #chat-input:focus {
-    border-color: #007bff;
+    border-color: #C8102E; /* SRCA Red */
 }
 
 #send-button {
-    padding: 6px 15px; /* Reduced padding */
-    background-color: #c31e24; /* Updated to match logo red */
+    background-color: #C8102E; /* SRCA Red */
     color: white;
     border: none;
-    border-radius: 20px;
+    border-radius: 50%; /* Circular button */
     cursor: pointer;
-    font-size: 13px; /* Reduced font size */
+    font-size: 1rem; 
     transition: background-color 0.2s;
+    width: 36px; 
+    height: 36px; 
+    padding: 0; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; 
+    margin-right: 12px; /* Added space between button and input field */
 }
 
 #send-button:hover {
-    background-color: #a0181e; /* Darker red for hover */
+    background-color: #A00C24; /* Darker SRCA Red on hover */
 }
 
 #send-button:disabled {
-    background-color: #cccccc;
+    background-color: #AEAEB2; 
     cursor: not-allowed;
 }
+#send-button:disabled svg {
+    stroke: #E5E5EA; 
+}
+
 
 #loading-indicator, #error-message {
     padding: 10px 20px;
-    text-align: center;
+    text-align: right; /* Ensure RTL alignment */
     font-style: italic;
     color: #555;
-    flex-shrink: 0; /* Prevent from shrinking */
+    flex-shrink: 0;
 }
 
 #error-message {
@@ -299,21 +413,32 @@ body {
     border-bottom: 1px solid #e0e0e0;
 }
 
-/* Scrollbar styling */
 #chat-output::-webkit-scrollbar {
     width: 8px;
 }
 
 #chat-output::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
+    background: #E5E5EA; 
+    border-radius: 4px;
 }
 
 #chat-output::-webkit-scrollbar-thumb {
-    background: #c5c5c5;
-    border-radius: 10px;
+    background: #B0B0B0; /* Lighter gray for thumb */
+    border-radius: 4px;
 }
 
 #chat-output::-webkit-scrollbar-thumb:hover {
-    background: #a5a5a5;
+    background: #909090; /* Slightly darker on hover */
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

@@ -4,38 +4,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini API Chat</title>
+    <title>مساعد استراتيجية التحول الرقمي</title>
     <link rel="stylesheet" href="index.css">
     <script type="importmap">
-      {
-        "imports": {
-          "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
-          "marked": "https://esm.sh/marked@^12.0.2"
-        }
-      }
-    </script>
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
+    "marked": "https://esm.sh/marked@^12.0.2"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
-    <div id="chat-container">
-        <div id="chat-header">
-            <img src="https://www2.0zz0.com/2025/06/13/00/509340090.png" alt="شعار استراتيجية التحول الرقمي" id="app-logo">
-        </div>
-        <div id="chat-output">
+    <div id="chat-container" role="application">
+        <header id="chat-header" role="banner">
+            <div id="header-text-container">
+                <span id="header-title">الادارة العامة للتحول الرقمي</span>
+                <span id="header-subtitle">ادارة المشاريع والاستراتيجة</span>
+            </div>
+            <img src="https://www.srca.org.sa/media/hukm0vl1/logo.png" alt="شعار هيئة الهلال الأحمر السعودي" id="header-logo">
+        </header>
+        <main id="chat-output" role="log" aria-live="polite" aria-atomic="false">
             <!-- Chat messages will appear here -->
-        </div>
-        <div id="loading-indicator" style="display: none;">جاري إنشاء الرد...</div>
-        <div id="error-message" style="display: none; color: red;"></div>
-        <div id="suggested-questions-area">
+        </main>
+        <div id="loading-indicator" style="display: none;" role="status" aria-live="assertive">جاري إنشاء الرد...</div>
+        <div id="error-message" style="display: none; color: red;" role="alert" aria-live="assertive"></div>
+        <div id="suggested-questions-area" style="display: none !important;">
             <h4>الأسئلة المقترحة:</h4>
             <div id="suggested-questions-buttons">
                 <!-- Buttons will be populated by JavaScript -->
             </div>
         </div>
-        <div id="input-area">
-            <textarea id="chat-input" placeholder="اكتب سؤالك هنا ..." rows="2"></textarea>
-            <button id="send-button">إرسال</button>
-        </div>
+        <footer id="input-area" role="form" aria-labelledby="chat-input-label">
+            <label id="chat-input-label" for="chat-input" class="visually-hidden">اكتب سؤالك هنا</label>
+            <textarea id="chat-input" placeholder="اكتب سؤالك هنا ..." rows="1" aria-label="صندوق إدخال الدردشة"></textarea>
+            <button id="send-button" aria-label="إرسال الرسالة">
+                <svg width="19" height="19" viewBox="0 -1 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </footer>
     </div>
     <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
