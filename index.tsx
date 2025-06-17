@@ -978,21 +978,26 @@ function getBestMatch(userInput: string, knowledge: KnowledgeEntry[]): Knowledge
   return topMatches;
 }
 
-
-const initialHistory: Content[] = [
-  {
-    role: "user",
-    parts: [{ text: "مرحباً" }],
-  },
+// Defines what messages are shown on initial UI load
+const initialMessagesToRenderOnLoad: Content[] = [
   {
     role: "model",
     parts: [{ text: "أهلاً بك! أنا مساعدك المتخصص في استراتيجية التحول الرقمي لهيئة الهلال الأحمر السعودي. كيف يمكنني خدمتك اليوم؟" }],
   }
 ];
 
+// Defines the initial history for the Chat SDK, ensuring it starts with a user turn
+const sdkChatHistory: Content[] = [
+  {
+    role: "user",
+    parts: [{ text: "مرحباً، قدم نفسك." }] // Generic user opener to elicit the model's greeting
+  },
+  ...initialMessagesToRenderOnLoad // Appends the model's welcome message
+];
+
 const chat: Chat = ai.chats.create({
   model: modelName,
-  history: initialHistory,
+  history: sdkChatHistory, // Use the SDK-compliant history
   config: {
     safetySettings: safetySettings,
     systemInstruction: systemInstructionTextRAG,
@@ -1443,25 +1448,17 @@ sendButton.addEventListener('click', () => {
   sendMessage(chatInput.value);
 });
 
-setTimeout(() => {
-    if (initialHistory.length > 1 && initialHistory[initialHistory.length -1].role === 'model'){
-        const lastModelMessage = initialHistory[initialHistory.length -1].parts[0].text;
-        if(lastModelMessage) {
-            const existingMessages = chatOutput.querySelectorAll('.model-message .message-content');
-            let alreadyDisplayed = false;
-            const parsedLastModelMessage = marked.parse(lastModelMessage.trim()) as string;
-            existingMessages.forEach(msgElement => {
-                if (msgElement.innerHTML?.trim() === parsedLastModelMessage.trim()) {
-                    alreadyDisplayed = true;
-                }
-            });
-            if (!alreadyDisplayed) {
-                displayMessage(lastModelMessage, 'model');
-            }
+// Display messages from initialMessagesToRenderOnLoad on load
+function displayInitialHistory() {
+    chatOutput.innerHTML = ''; // Clear any existing messages first
+    initialMessagesToRenderOnLoad.forEach(message => { // Iterates over the desired single model message for display
+        if (message.parts && message.parts.length > 0 && message.parts[0].text) {
+            const senderRole = message.role === 'user' ? 'user' : 'model';
+            displayMessage(message.parts[0].text, senderRole);
         }
-    }
-}, 0);
-
+    });
+    chatOutput.scrollTop = chatOutput.scrollHeight; // Scroll to the bottom
+}
 
 window.addEventListener('error', (event) => {
   if (event.message.includes("API_KEY not set") || event.message.includes("API_KEY is not configured")) {
@@ -1483,7 +1480,9 @@ window.addEventListener('error', (event) => {
   }
 });
 
+// Ensure loadKnowledgeBase completes before displaying history
 (async () => {
   await loadKnowledgeBase();
+  displayInitialHistory(); // Display history after knowledge base is loaded
   chatInput.focus();
 })();
