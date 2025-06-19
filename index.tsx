@@ -47,7 +47,13 @@ const MAX_CANDIDATES_TO_SEND = 1; // إرسال أفضل تطابق فقط لت�
 
 const visionQueryPattern = /كيف (يساهم|تساهم)(?: مستهدفات)? مشروع (.*?) في تحقيق رؤية (?:المملكة )?(?:2030|٢٠٣٠|2023|٢٠٢٣)(?:م)?\??/i;
 const objectiveVisionQueryPattern = /^(?:كيف يساهم|مساهمة|مواءمة) هدف (.*?) (?:في التحول الرقمي )?(?:(?:في تحقيق|مع|في)\s)?رؤية (?:المملكة )?(?:2030|٢٠٣٠|2023|٢٠٢٣)(?:م)?\??$/i;
+const projectDgaAlignmentQueryPattern = /^(?:كيف يساهم|ما هي مساهمة|ما مدى مساهمة|وضح مساهمة|ما هي مواءمة|اشرح مواءمة|موائمة)\sمشروع\s(.*?)\s(?:في تحقيق|مع|في)\s?(?:متطلبات|توجهات|متطلبات وتوجهات)\s(?:هيئة\s)?الحكومة\sالرقمية(?:\s(?:DGA|دي جي ايه|دي\sجي\sايه))?\??$/i;
 let userInput = ''; 
+
+// Global variables for roadmap and known projects
+let roadmapProjectIds: Set<string> = new Set();
+let allKnownProjects: { id: string, name: string, initiative?: string }[] = [];
+
 
 async function fetchFileContent(filePath: string): Promise<string> {
   const response = await fetch(filePath);
@@ -845,6 +851,30 @@ async function loadKnowledgeBase(): Promise<void> {
     if (parsedData && typeof parsedData === 'object' && parsedData !== null) {
         knowledgeBase = await transformMetadataToKnowledgeBase(parsedData); 
         
+        // Populate roadmapProjectIds
+        roadmapProjectIds.clear();
+        const roadmapData = parsedData.digitalTransformationStrategy?.roadmap;
+        if (roadmapData && roadmapData.timeline && Array.isArray(roadmapData.timeline)) {
+            for (const timelineEntry of roadmapData.timeline) {
+                if (timelineEntry.projects && Array.isArray(timelineEntry.projects)) {
+                    (timelineEntry.projects as string[]).forEach(projectId => roadmapProjectIds.add(projectId.trim().toUpperCase()));
+                }
+            }
+            console.log("[loadKnowledgeBase] Loaded roadmap project IDs:", Array.from(roadmapProjectIds));
+        }
+
+        // Populate allKnownProjects
+        allKnownProjects = [];
+        const futureProjectsData = parsedData.digitalTransformationStrategy?.futureProjects;
+        if (futureProjectsData && futureProjectsData.projects && Array.isArray(futureProjectsData.projects)) {
+            allKnownProjects = futureProjectsData.projects.map((p: any) => ({
+                id: (p.id || "").trim().toUpperCase(), // Ensure IDs are stored in uppercase for consistent checking
+                name: (p.name || "").trim(),
+                initiative: (p.initiative || "").trim()
+            })).filter((p: any) => p.id && p.name); 
+            console.log("[loadKnowledgeBase] Loaded all known project details:", allKnownProjects.length);
+        }
+
     } else {
         knowledgeBase = [];
         displayMessage("البيانات المصدرية ليست بالتنسيق المتوقع. لا يمكن تحميل قاعدة المعرفة.", 'error');
@@ -978,26 +1008,21 @@ function getBestMatch(userInput: string, knowledge: KnowledgeEntry[]): Knowledge
   return topMatches;
 }
 
-// Defines what messages are shown on initial UI load
-const initialMessagesToRenderOnLoad: Content[] = [
+
+const initialHistory: Content[] = [
+  {
+    role: "user",
+    parts: [{ text: "مرحباً" }],
+  },
   {
     role: "model",
     parts: [{ text: "أهلاً بك! أنا مساعدك المتخصص في استراتيجية التحول الرقمي لهيئة الهلال الأحمر السعودي. كيف يمكنني خدمتك اليوم؟" }],
   }
 ];
 
-// Defines the initial history for the Chat SDK, ensuring it starts with a user turn
-const sdkChatHistory: Content[] = [
-  {
-    role: "user",
-    parts: [{ text: "مرحباً، قدم نفسك." }] // Generic user opener to elicit the model's greeting
-  },
-  ...initialMessagesToRenderOnLoad // Appends the model's welcome message
-];
-
 const chat: Chat = ai.chats.create({
   model: modelName,
-  history: sdkChatHistory, // Use the SDK-compliant history
+  history: initialHistory,
   config: {
     safetySettings: safetySettings,
     systemInstruction: systemInstructionTextRAG,
@@ -1090,7 +1115,7 @@ function displayGroundingSources(groundingChunks: any[]) {
 
 
 async function sendMessage(currentInput: string) {
-  userInput = currentInput; 
+  userInput = currentInput;
   if (!userInput.trim()) return;
 
   displayMessage(userInput, 'user');
@@ -1099,6 +1124,167 @@ async function sendMessage(currentInput: string) {
   loadingIndicator.style.display = 'block';
   errorMessageDiv.style.display = 'none';
 
+  let useGoogleSearch = false;
+  let entityTypeForSearch: 'مشروع' | 'هدف' | 'توجه_حكومي' | 'متطلبات_dga' | 'project_dga_alignment' | null = null;
+  let entityNameToUseForSearch: string | null = null;
+  let localContextForVision2030 = "";
+
+  const normalizedUserInputLower = userInput.trim().toLowerCase().replace(/[؟.,!]/g, '');
+
+    // Preliminary checks for project-related queries to extract entityNameToUseForSearch
+    const projectVisionQueryMatchPrelim = userInput.match(visionQueryPattern);
+    if (projectVisionQueryMatchPrelim && projectVisionQueryMatchPrelim[2]) {
+        entityNameToUseForSearch = projectVisionQueryMatchPrelim[2].trim().replace(/[؟.,!]/g, '');
+        entityTypeForSearch = 'مشروع';
+    } else {
+        const projectDgaAlignmentMatchPrelim = userInput.match(projectDgaAlignmentQueryPattern);
+        if (projectDgaAlignmentMatchPrelim && projectDgaAlignmentMatchPrelim[1]) {
+            entityNameToUseForSearch = projectDgaAlignmentMatchPrelim[1].trim().replace(/[؟.,!]/g, '');
+            entityTypeForSearch = 'project_dga_alignment';
+        }
+    }
+    // Objective vision query doesn't set entityTypeForSearch to 'مشروع', so it's not subject to project roadmap check here.
+    const objectiveVisionQueryMatchPrelim = userInput.match(objectiveVisionQueryPattern);
+    if (!entityNameToUseForSearch && objectiveVisionQueryMatchPrelim && objectiveVisionQueryMatchPrelim[1]) {
+        // entityNameToUseForSearch = objectiveVisionQueryMatchPrelim[1].trim().replace(/[؟.,!]/g, '');
+        // entityTypeForSearch = 'هدف'; // This is 'هدف', not 'مشروع'
+    }
+
+
+  // Perform project validation if a project name was extracted
+  if (entityNameToUseForSearch && (entityTypeForSearch === 'مشروع' || entityTypeForSearch === 'project_dga_alignment')) {
+    let identifiedProjectId: string | null = null;
+    let projectIsKnown = false;
+
+    const normalizedSearchInput = entityNameToUseForSearch.trim().toLowerCase();
+    const searchInputAsPotentialId = entityNameToUseForSearch.trim().toUpperCase();
+
+    const projectById = allKnownProjects.find(p => p.id === searchInputAsPotentialId);
+
+    if (projectById) {
+      identifiedProjectId = projectById.id;
+      projectIsKnown = true;
+    } else {
+      const projectsByName = allKnownProjects.filter(p =>
+        p.name.toLowerCase().includes(normalizedSearchInput)
+      );
+      if (projectsByName.length === 1) {
+        identifiedProjectId = projectsByName[0].id;
+        projectIsKnown = true;
+      } else if (projectsByName.length > 1) {
+         console.log(`[sendMessage] Ambiguous project name match for "${entityNameToUseForSearch}". Found:`, projectsByName.map(p=>p.name + " (" + p.id + ")"));
+         // For now, if ambiguous, we treat it as "not uniquely identified for roadmap check"
+         // and will prevent specific actions for it if it's not explicitly in roadmap by one of its IDs
+         // However, a simple approach: if any of the ambiguous matches are on roadmap, let it pass for now.
+         // This is a complex case. Sticking to "must be uniquely identifiable".
+         // Let's be strict: if ambiguous, don't confirm as "known and on roadmap".
+      }
+    }
+
+    if (projectIsKnown && identifiedProjectId) {
+      if (!roadmapProjectIds.has(identifiedProjectId)) {
+        console.log(`[sendMessage] Project "${entityNameToUseForSearch}" (ID: ${identifiedProjectId}) is known but NOT in the roadmap. Aborting.`);
+        displayMessage(`المشروع "${entityNameToUseForSearch}" معروف ولكنه غير مدرج ضمن خارطة طريق استراتيجية التحول الرقمي الحالية. لا يمكنني تقديم معلومات عنه.`, 'model');
+        loadingIndicator.style.display = 'none';
+        sendButton.disabled = false;
+        chatInput.focus();
+        return; 
+      } else {
+        console.log(`[sendMessage] Project "${entityNameToUseForSearch}" (ID: ${identifiedProjectId}) IS in the roadmap. Proceeding.`);
+      }
+    } else if (!projectIsKnown && entityNameToUseForSearch) {
+      console.log(`[sendMessage] Project "${entityNameToUseForSearch}" is NOT a known project from the data. Aborting.`);
+      displayMessage(`المشروع "${entityNameToUseForSearch}" غير معروف أو غير مدرج في البيانات المتوفرة. لا يمكنني تقديم معلومات عنه.`, 'model');
+      loadingIndicator.style.display = 'none';
+      sendButton.disabled = false;
+      chatInput.focus();
+      return; 
+    }
+  }
+
+
+  // Keywords for "DGA Digital Government Requirements/Directions"
+  const dgaRequirementsKeywords = [
+    "متطلبات الحكومة الرقمية dga", "متطلبات هيئة الحكومة الرقمية", "متطلبات ال dga",
+    "ما هي متطلبات هيئة الحكومة الرقمية dga", "معايير هيئة الحكومة الرقمية dga",
+    "ارشادات هيئة الحكومة الرقمية", "سياسات هيئة الحكومة الرقمية",
+    "اطر عمل هيئة الحكومة الرقمية", "التزامات هيئة الحكومة الرقمية",
+    "متطلبات التحول الرقمي من dga", "كل مايخص متطلبات الحكومة الرقمية dga",
+    "توجهات الحكومة الرقمية dga", "توجهات هيئة الحكومة الرقمية" 
+  ];
+
+  let dgaRequirementsQueryDetected = false;
+  for (const keyword of dgaRequirementsKeywords) {
+    if (normalizedUserInputLower.includes(keyword.toLowerCase().replace(/[؟.,!]/g, ''))) {
+      dgaRequirementsQueryDetected = true;
+      break;
+    }
+  }
+
+  if (dgaRequirementsQueryDetected) {
+    console.log("[sendMessage] Detected 'DGA Digital Government Requirements/Directions' query. Activating Google Search.");
+    entityTypeForSearch = 'متطلبات_dga'; // Overwrite if it was project type earlier
+    useGoogleSearch = true;
+  } else {
+    // Keywords for general "Digital Government Directions"
+    const digitalGovDirectionsKeywords = [
+        "توجهات الحكومة الرقمية", "توجه الحكومة الرقمية",
+        "توجهات الحكومه الرقميه", "توجه الحكومه الرقميه", 
+        "ما هي توجهات الحكومة الرقمية", "ما هي احدث توجهات الحكومة الرقمية",
+        "اخر توجهات الحكومة الرقمية", "توجهات التحول الرقمي الحكومي",
+        "كل مايخص توجهات الحكومة الرقمية"
+    ];
+    if (digitalGovDirectionsKeywords.some(keyword => normalizedUserInputLower.includes(keyword.toLowerCase().replace(/[؟.,!]/g, '')))) {
+      console.log("[sendMessage] Detected general 'Digital Government Directions' query. Activating Google Search.");
+      entityTypeForSearch = 'توجه_حكومي'; // Overwrite if it was project type
+      useGoogleSearch = true;
+    }
+  }
+  
+  // Re-evaluate project-specific queries for Google Search activation, only if not already decided for DGA/general trends
+  // And only if the project passed the roadmap check (implicit, as we would have returned otherwise)
+  if (!useGoogleSearch) {
+    if (entityTypeForSearch === 'project_dga_alignment' && entityNameToUseForSearch) {
+        // This project has passed roadmap validation if we are here.
+        useGoogleSearch = true;
+        console.log(`[sendMessage] Project DGA alignment query for project: ${entityNameToUseForSearch}. It's in roadmap. Activating Google Search.`);
+    } else if (entityTypeForSearch === 'مشروع' && entityNameToUseForSearch) {
+        // This project has passed roadmap validation.
+        const specificVisionPrompt = `كيف تساهم مستهدفات مشروع ${entityNameToUseForSearch} في تحقيق رؤية المملكة 2030م؟`;
+        const specificMatches = getBestMatch(specificVisionPrompt, knowledgeBase);
+        if (specificMatches.length > 0 && specificMatches[0].completion.includes("المساهمة في تحقيق رؤية المملكة 2030")) {
+            const visionSectionMatch = specificMatches[0].completion.match(/### المساهمة في تحقيق رؤية المملكة 2030:([\s\S]*)/);
+            if (visionSectionMatch && visionSectionMatch[1] && visionSectionMatch[1].trim().length > 30) {
+            localContextForVision2030 = specificMatches[0].completion;
+            }
+        }
+        if (!localContextForVision2030) {
+            useGoogleSearch = true; 
+        }
+    } else {
+        // This is for objective vision query, which is not project-specific roadmap checked
+      const objectiveVisionQueryMatch = userInput.match(objectiveVisionQueryPattern);
+      if (objectiveVisionQueryMatch && objectiveVisionQueryMatch[1]) {
+        // entityNameToUseForSearch here refers to an objective's name
+        const objectiveNameFromQuery = objectiveVisionQueryMatch[1].trim().replace(/[؟.,!]/g, '');
+        entityNameToUseForSearch = objectiveNameFromQuery; // Set for search query context
+        entityTypeForSearch = 'هدف'; // Correct type for objectives
+
+        const specificVisionPrompt = `كيف يساهم هدف ${entityNameToUseForSearch} في تحقيق رؤية المملكة 2030م؟`;
+        const specificMatches = getBestMatch(specificVisionPrompt, knowledgeBase);
+        if (specificMatches.length > 0 && specificMatches[0].completion.includes("مساهمة هدف التحول الرقمي") && specificMatches[0].completion.includes("في رؤية المملكة 2030")) {
+             const visionSectionMatch = specificMatches[0].completion.match(/## مساهمة هدف التحول الرقمي:.*?في رؤية المملكة 2030([\s\S]*)/);
+             if (visionSectionMatch && visionSectionMatch[1] && visionSectionMatch[1].trim().length > 30){
+                localContextForVision2030 = specificMatches[0].completion;
+             }
+        }
+         if (!localContextForVision2030) {
+          useGoogleSearch = true; 
+        }
+      }
+    }
+  }
+  
   // START: Directly handle general strategic objectives query
   const generalStrategicObjectivesPromptsKB = [
       "ماهي الاهداف الاستراتيجية للتحول الرقمي؟",
@@ -1171,128 +1357,140 @@ async function sendMessage(currentInput: string) {
             sendButton.disabled = false;
             chatInput.focus();
           }
-          return; // Exit after handling this specific query directly
+          return; 
       } else {
          console.warn("[sendMessage] General strategic objectives query detected, but no specific match found in knowledgeBase (sourcePath: digitalTransformationStrategy.strategicHouse.objectivesData.summary). Falling through to standard logic.");
       }
   }
   // END: Directly handle general strategic objectives query
 
+  // 3. Execute Google Search if flagged
+  if (useGoogleSearch) {
+    console.log(`[sendMessage] Google Search is active. Entity Type: ${entityTypeForSearch}, Entity Name: ${entityNameToUseForSearch}`);
+    let searchQueryForGoogle = "";
+    let systemInstructionForGoogleSearch = "";
 
-  let entityNameToUseForSearch: string | null = null;
-  let entityTypeForSearch: 'مشروع' | 'هدف' | null = null;
-  let useGoogleSearch = false;
-  let localContextForVision2030 = "";
-
-  const projectVisionQueryMatch = userInput.match(visionQueryPattern);
-  const objectiveVisionQueryMatch = userInput.match(objectiveVisionQueryPattern);
-  
-  if (projectVisionQueryMatch && projectVisionQueryMatch[2]) { 
-    entityNameToUseForSearch = projectVisionQueryMatch[2].trim().replace(/[؟.,!]/g, '');
-    entityTypeForSearch = 'مشروع';
-    const specificVisionPrompt = `كيف تساهم مستهدفات مشروع ${entityNameToUseForSearch} في تحقيق رؤية المملكة 2030م؟`;
-    const specificMatches = getBestMatch(specificVisionPrompt, knowledgeBase);
+    if (entityTypeForSearch === 'project_dga_alignment' && entityNameToUseForSearch) {
+      searchQueryForGoogle = `مساهمة مشروع "${entityNameToUseForSearch}" في متطلبات وتوجهات هيئة الحكومة الرقمية السعودية DGA`;
+      systemInstructionForGoogleSearch = `أنت خبير في استراتيجيات التحول الرقمي ومواءمة المشاريع مع متطلبات هيئة الحكومة الرقمية (DGA) في المملكة العربية السعودية. بناءً على نتائج البحث المقدمة التي قد تشمل معلومات عن مشروع "${entityNameToUseForSearch}" وأيضًا عن متطلبات وتوجهات هيئة الحكومة الرقمية (DGA)، قدم إجابة شاملة ومفصلة توضح كيف يساهم هذا المشروع في تحقيق هذه المتطلبات والتوجهات.
+ركز على تحليل كيف أن أهداف المشروع، أنشطته، أو مخرجاته المتوقعة تتوافق بشكل مباشر أو غير مباشر مع واحد أو أكثر من متطلبات أو توجهات DGA المعروفة (مثل تلك المتعلقة بتجربة المستفيد، الخدمات الرقمية، البيانات، الأمن السيبراني، الكفاءة الحكومية، الابتكار، تبني التقنيات الناشئة، إلخ).
+صغ إجابتك بأسلوب طبيعي وواضح كأنها معرفتك الخاصة، **وتجنب تمامًا أي إشارة إلى أنك تبحث أو أن المعلومات من مصادر خارجية أو مواقع ويب.** إذا كانت المساهمة تشمل جوانب متعددة، استخدم قائمة نقطية منظمة ومفصلة لتقديم عرض شامل وواضح. إذا لم تتوفر معلومات كافية في نتائج البحث لربط المشروع بشكل واضح ومفصل بمتطلبات DGA المحددة، اذكر أنه بناءً على المعلومات المتاحة حالياً، لا يمكن تحديد مساهمات مفصلة للمشروع في متطلبات DGA، دون تخمين.`;
+      console.log(`[sendMessage] Using Google Search for Project DGA Alignment. Query: ${searchQueryForGoogle}`);
+    } else if (entityTypeForSearch === 'متطلبات_dga') {
+      searchQueryForGoogle = "متطلبات وتوجهات هيئة الحكومة الرقمية السعودية DGA للجهات الحكومية";
+      systemInstructionForGoogleSearch = `أنت خبير في متطلبات وتوجهات هيئة الحكومة الرقمية (DGA) في المملكة العربية السعودية. بناءً على نتائج البحث المقدمة، قدم إجابة شاملة ومفصلة حول أبرز هذه المتطلبات والتوجهات للجهات الحكومية. يجب أن تغطي إجابتك الجوانب الرئيسية مثل: السياسات والمعايير الإلزامية والإرشادية، الأطر التنظيمية، تطوير الخدمات الرقمية الحكومية (مثل الخدمات الاستباقية، تصميم تجربة المستخدم)، إدارة البيانات الحكومية ومشاركتها وحمايتها، متطلبات الأمن السيبراني، معايير البنية التحتية الرقمية، تبني التقنيات الناشئة، والابتكار في الخدمات الحكومية. صغ إجابتك بأسلوب طبيعي وواضح كأنها معرفتك الخاصة، **وتجنب تمامًا أي إشارة إلى أنك تبحث أو أن المعلومات من مصادر خارجية أو مواقع ويب.** إذا كانت المتطلبات أو التوجهات متعددة، استخدم قائمة نقطية منظمة ومفصلة لتقديم عرض شامل وواضح.`;
+      console.log(`[sendMessage] Using Google Search for DGA Requirements/Directions. Query: ${searchQueryForGoogle}`);
+    } else if (entityTypeForSearch === 'توجه_حكومي') {
+      searchQueryForGoogle = "ما هي أبرز توجهات الحكومة الرقمية الحديثة في المملكة العربية السعودية وعلى الصعيد العالمي؟";
+      systemInstructionForGoogleSearch = `أنت خبير في التحول الرقمي الحكومي. بناءً على نتائج البحث المقدمة، قدم إجابة شاملة ومفصلة حول أبرز توجهات الحكومة الرقمية الحديثة. يجب أن تغطي إجابتك الجوانب الرئيسية مثل:
+- التقنيات الناشئة وتطبيقاتها (مثل الذكاء الاصطناعي التوليدي والتحليلي، البلوك تشين، إنترنت الأشياء، الحوسبة السحابية الآمنة، البيانات الضخمة والتحليلات المتقدمة، الواقع المعزز والافتراضي في الخدمات الحكومية).
+- تحسين تجربة المواطن والمستفيد الرقمية (الخدمات الاستباقية والشخصية، القنوات المتعددة والمتكاملة، تصميم الخدمات المرتكز على المستخدم، الشمول الرقمي).
+- البيانات الحكومية (البيانات المفتوحة كأصل وطني، منصات مشاركة البيانات بين الجهات الحكومية، حوكمة البيانات الفعالة، تحقيق القيمة من البيانات).
+- الأمن السيبراني المتقدم وحماية الخصوصية (بناء الثقة الرقمية، مواجهة التهديدات المتطورة).
+- الاستدامة في التحول الرقمي (الحكومة الرقمية الخضراء، تقليل الأثر البيئي للتقنية).
+- تطوير المهارات والقدرات الرقمية الحكومية (التأهيل المستمر، جذب واستبقاء المواهب).
+- الحكومة كمنصة والابتكار المشترك (تمكين القطاع الخاص والمطورين من بناء خدمات مبتكرة).
+- الحوكمة الرقمية الرشيقة والمتكيفة (السياسات المرنة، الأطر التنظيمية الداعمة للابتكار).
+- أخلاقيات الذكاء الاصطناعي والتقنيات الناشئة في القطاع الحكومي.
+صغ إجابتك بأسلوب طبيعي وواضح كأنها معرفتك الخاصة، **وتجنب تمامًا أي إشارة إلى أنك تبحث أو أن المعلومات من مصادر خارجية أو مواقع ويب.** إذا كانت التوجهات متعددة، استخدم قائمة نقطية منظمة ومفصلة لتسهيل القراءة والفهم العميق.`;
+      console.log(`[sendMessage] Using Google Search for general Digital Government Directions. Query: ${searchQueryForGoogle}`);
+    } else if (entityNameToUseForSearch && (entityTypeForSearch === 'مشروع' || entityTypeForSearch === 'هدف')) {
+      searchQueryForGoogle = `مساهمة ${entityTypeForSearch} "${entityNameToUseForSearch}" التابع لهيئة الهلال الأحمر السعودي في تحقيق رؤية المملكة 2030`;
+      systemInstructionForGoogleSearch = `أنت مساعد خبير. مهمتك هي الإجابة على السؤال حول كيف يساهم ${entityTypeForSearch} "${entityNameToUseForSearch}" في تحقيق أهداف رؤية المملكة 2030، بناءً على نتائج البحث المقدمة. قدم إجابة مباشرة ومركزة وصغها كأنها معرفتك الخاصة، **وتجنب تمامًا أي إشارة إلى أنك تبحث أو أن المعلومات من مصادر خارجية أو مواقع ويب.** اشرح المساهمات بوضوح. إذا كانت المساهمات متعددة، استخدم قائمة نقطية لزيادة الوضوح.`;
+      console.log(`[sendMessage] Using Google Search for ${entityTypeForSearch} Vision 2030: ${entityNameToUseForSearch}`);
+    } else {
+      console.warn("[sendMessage] Google Search active but specific search conditions not met. Falling back to generic user input for query.");
+      searchQueryForGoogle = userInput; // Fallback to user input if no specific search type matched
+      systemInstructionForGoogleSearch = `أنت مساعد خبير. بناءً على نتائج البحث المقدمة، أجب على السؤال التالي: "${userInput}". قدم إجابة واضحة ومباشرة. تجنب تمامًا ذكر أنك تبحث أو أن المعلومات من مصادر خارجية أو مواقع ويب.`;
+    }
     
-    if (specificMatches.length > 0 && specificMatches[0].completion.includes("المساهمة في تحقيق رؤية المملكة 2030")) {
-      const visionSectionMatch = specificMatches[0].completion.match(/### المساهمة في تحقيق رؤية المملكة 2030:([\s\S]*)/);
-      if (visionSectionMatch && visionSectionMatch[1] && visionSectionMatch[1].trim().length > 30) {
-        localContextForVision2030 = specificMatches[0].completion;
-      }
-    }
-    if (!localContextForVision2030) {
-      useGoogleSearch = true;
-    }
-  } else if (objectiveVisionQueryMatch && objectiveVisionQueryMatch[1]) {
-    entityNameToUseForSearch = objectiveVisionQueryMatch[1].trim().replace(/[؟.,!]/g, '');
-    entityTypeForSearch = 'هدف';
-    const specificVisionPrompt = `كيف يساهم هدف ${entityNameToUseForSearch} في تحقيق رؤية المملكة 2030م؟`;
-    const specificMatches = getBestMatch(specificVisionPrompt, knowledgeBase);
+    if (searchQueryForGoogle && systemInstructionForGoogleSearch) {
+        let responseText = "";
+        let currentModelMessageDiv: HTMLDivElement | null = null;
+        let currentModelContentDiv: HTMLDivElement | null = null;
+        let groundingMetadataFromStream: any[] = [];
 
-    if (specificMatches.length > 0 && specificMatches[0].completion.includes("مساهمة هدف التحول الرقمي") && specificMatches[0].completion.includes("في رؤية المملكة 2030")) {
-         const visionSectionMatch = specificMatches[0].completion.match(/## مساهمة هدف التحول الرقمي:.*?في رؤية المملكة 2030([\s\S]*)/);
-         if (visionSectionMatch && visionSectionMatch[1] && visionSectionMatch[1].trim().length > 30){
-            localContextForVision2030 = specificMatches[0].completion;
-         }
-    }
-     if (!localContextForVision2030) {
-      useGoogleSearch = true;
-    }
-  }
+        try {
+          const streamResult = await ai.models.generateContentStream({
+            model: modelName,
+            contents: [{ role: "user", parts: [{ text: searchQueryForGoogle }] }],
+            config: {
+              safetySettings: safetySettings,
+              systemInstruction: systemInstructionForGoogleSearch,
+              tools: [{ googleSearch: {} }],
+            }
+          });
 
-
-  if (useGoogleSearch && entityNameToUseForSearch && entityTypeForSearch) {
-    console.log(`[sendMessage] Using Google Search for ${entityTypeForSearch}: ${entityNameToUseForSearch}`);
-    const searchQueryForGoogle = `مساهمة ${entityTypeForSearch} "${entityNameToUseForSearch}" التابع لهيئة الهلال الأحمر السعودي في تحقيق رؤية المملكة 2030`;
-    const systemInstructionForGoogleSearch = `أنت مساعد خبير. مهمتك هي الإجابة على السؤال حول كيف يساهم ${entityTypeForSearch} "${entityNameToUseForSearch}" في تحقيق أهداف رؤية المملكة 2030، بناءً على نتائج البحث المقدمة. قدم إجابة مباشرة ومركزة وصغها كأنها معرفتك الخاصة، **وتجنب تمامًا أي إشارة إلى أنك تبحث أو أن المعلومات من مصادر خارجية أو مواقع ويب.** اشرح المساهمات بوضوح. إذا كانت المساهمات متعددة، استخدم قائمة نقطية لزيادة الوضوح.`;
-    
-    let responseText = "";
-    let currentModelMessageDiv: HTMLDivElement | null = null;
-    let currentModelContentDiv: HTMLDivElement | null = null;
-    let groundingMetadataFromStream: any[] = [];
-
-    try {
-      const streamResult = await ai.models.generateContentStream({
-        model: modelName,
-        contents: [{ role: "user", parts: [{ text: searchQueryForGoogle }] }],
-        config: {
-          safetySettings: safetySettings,
-          systemInstruction: systemInstructionForGoogleSearch,
-          tools: [{ googleSearch: {} }],
-        }
-      });
-
-      for await (const chunk of streamResult) { 
-        const chunkText = chunk.text;
-        if (chunkText) {
-          responseText += chunkText;
-          if (!currentModelMessageDiv) {
-            currentModelMessageDiv = document.createElement('div');
-            currentModelMessageDiv.classList.add('chat-message', 'model-message');
-            currentModelMessageDiv.setAttribute('role', 'article');
-            currentModelMessageDiv.setAttribute('aria-label', 'رسالة النموذج');
-            currentModelContentDiv = document.createElement('div');
-            currentModelContentDiv.classList.add('message-content');
-            currentModelMessageDiv.appendChild(currentModelContentDiv);
-            chatOutput.appendChild(currentModelMessageDiv);
+          for await (const chunk of streamResult) { 
+            const chunkText = chunk.text;
+            if (chunkText) {
+              responseText += chunkText;
+              if (!currentModelMessageDiv) {
+                currentModelMessageDiv = document.createElement('div');
+                currentModelMessageDiv.classList.add('chat-message', 'model-message');
+                currentModelMessageDiv.setAttribute('role', 'article');
+                currentModelMessageDiv.setAttribute('aria-label', 'رسالة النموذج');
+                currentModelContentDiv = document.createElement('div');
+                currentModelContentDiv.classList.add('message-content');
+                currentModelMessageDiv.appendChild(currentModelContentDiv);
+                chatOutput.appendChild(currentModelMessageDiv);
+              }
+              if (currentModelContentDiv) {
+                const rawHtml = marked.parse(responseText);
+                const sanitizedHtml = typeof rawHtml === 'string' ? rawHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') : '';
+                currentModelContentDiv.innerHTML = sanitizedHtml;
+              }
+            }
+            if (chunk.candidates && chunk.candidates[0].groundingMetadata && chunk.candidates[0].groundingMetadata.groundingChunks) {
+                const newChunks = chunk.candidates[0].groundingMetadata.groundingChunks;
+                newChunks.forEach((nc: any) => {
+                    if (!groundingMetadataFromStream.some(existingChunk => existingChunk.web && nc.web && existingChunk.web.uri === nc.web.uri)) {
+                        groundingMetadataFromStream.push(nc);
+                    }
+                });
+            }
+            chatOutput.scrollTop = chatOutput.scrollHeight;
           }
-          if (currentModelContentDiv) {
-            const rawHtml = marked.parse(responseText);
-            const sanitizedHtml = typeof rawHtml === 'string' ? rawHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') : '';
-            currentModelContentDiv.innerHTML = sanitizedHtml;
+          
+          if (!responseText.trim() && currentModelMessageDiv && currentModelContentDiv) {
+            currentModelContentDiv.innerHTML = marked.parse("لم أتمكن من إيجاد إجابة محددة عبر البحث.") as string;
+          } else if (!responseText.trim() && !currentModelMessageDiv) {
+            displayMessage("لم أتمكن من إيجاد إجابة محددة عبر البحث.", 'model');
           }
-        }
-        if (chunk.candidates && chunk.candidates[0].groundingMetadata && chunk.candidates[0].groundingMetadata.groundingChunks) {
-            const newChunks = chunk.candidates[0].groundingMetadata.groundingChunks;
-            newChunks.forEach((nc: any) => {
-                if (!groundingMetadataFromStream.some(existingChunk => existingChunk.web && nc.web && existingChunk.web.uri === nc.web.uri)) {
-                    groundingMetadataFromStream.push(nc);
+          // displayGroundingSources(groundingMetadataFromStream); // Explicitly NOT calling this
+
+        } catch (error: any) {
+          console.error(`Error sending message to Gemini with Google Search (Type: ${entityTypeForSearch}):`, error);
+          let displayError = "عذرًا، حدث خطأ أثناء محاولة البحث عن إجابة.";
+            if (error.message) {
+                if (error.message.includes('DEADLINE_EXCEEDED')) {
+                    displayError = "انتهت مهلة الطلب. الرجاء المحاولة مرة أخرى.";
+                } else if (error.message.includes('API_KEY_INVALID') || error.message.includes('API key not valid') || (error.toString && error.toString().includes('API key not valid'))) {
+                    displayError = "مفتاح API غير صالح أو غير مصرح به. يرجى مراجعة الإعدادات.";
+                } else if (error.message.toLowerCase().includes('quota') || (error.status === 429 || (error.error && error.error.code === 429)) ) {
+                    displayError = "تم تجاوز حد الطلبات. يرجى المحاولة لاحقًا.";
+                } else if (error.message.includes('SAFETY') || (error.error && error.error.message && error.error.message.includes('SAFETY'))) {
+                    displayError = "تم حظر الرد بسبب إعدادات السلامة.";
+                } else if (error.message.includes('fetch') && error.message.toLowerCase().includes('failed')) {
+                    displayError = "حدث خطأ في الاتصال بالشبكة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.";
                 }
-            });
+            }
+            displayMessage(displayError, 'error');
+            errorMessageDiv.textContent = displayError;
+            errorMessageDiv.style.display = 'block';
+        } finally {
+          loadingIndicator.style.display = 'none';
+          sendButton.disabled = false;
+          chatInput.focus();
         }
-        chatOutput.scrollTop = chatOutput.scrollHeight;
-      }
-      
-      if (!responseText.trim() && currentModelMessageDiv && currentModelContentDiv) {
-        currentModelContentDiv.innerHTML = marked.parse("لم أتمكن من إيجاد إجابة محددة عبر البحث.") as string;
-      } else if (!responseText.trim() && !currentModelMessageDiv) {
-        displayMessage("لم أتمكن من إيجاد إجابة محددة عبر البحث.", 'model');
-      }
-
-      /* 
-      // تم تعطيل عرض مصادر البحث بناءً على طلب المستخدم
-      if (groundingMetadataFromStream.length > 0) {
-        // displayGroundingSources(groundingMetadataFromStream); 
-      }
-      */
-
-    } catch (error: any) {
-      console.error(`Error sending message to Gemini with Google Search (for ${entityTypeForSearch}):`, error);
-      displayMessage("عذرًا، حدث خطأ أثناء محاولة البحث عن إجابة.", 'error');
-    } finally {
-      loadingIndicator.style.display = 'none';
-      sendButton.disabled = false;
-      chatInput.focus();
+    } else {
+        console.error("[sendMessage] Google Search was triggered, but searchQueryForGoogle or systemInstructionForGoogleSearch was not set appropriately.");
+        displayMessage("عذرًا، لم أتمكن من صياغة طلب البحث بشكل صحيح للموضوع المطلوب.", 'error');
+        loadingIndicator.style.display = 'none';
+        sendButton.disabled = false;
+        chatInput.focus();
     }
+    return; // Return after handling Google Search
   } else { 
     console.log("[sendMessage] Entering local knowledge / RAG path.");
     const bestMatches = getBestMatch(userInput, knowledgeBase);
@@ -1352,7 +1550,7 @@ async function sendMessage(currentInput: string) {
                 sendButton.disabled = false;
                 chatInput.focus();
             }
-            return; // Exit after no-context fallback
+            return; 
         }
         console.log("[sendMessage] Found bestMatches. Using its completion for context.");
         contextToUse = bestMatches[0].completion;
@@ -1448,17 +1646,25 @@ sendButton.addEventListener('click', () => {
   sendMessage(chatInput.value);
 });
 
-// Display messages from initialMessagesToRenderOnLoad on load
-function displayInitialHistory() {
-    chatOutput.innerHTML = ''; // Clear any existing messages first
-    initialMessagesToRenderOnLoad.forEach(message => { // Iterates over the desired single model message for display
-        if (message.parts && message.parts.length > 0 && message.parts[0].text) {
-            const senderRole = message.role === 'user' ? 'user' : 'model';
-            displayMessage(message.parts[0].text, senderRole);
+setTimeout(() => {
+    if (initialHistory.length > 1 && initialHistory[initialHistory.length -1].role === 'model'){
+        const lastModelMessage = initialHistory[initialHistory.length -1].parts[0].text;
+        if(lastModelMessage) {
+            const existingMessages = chatOutput.querySelectorAll('.model-message .message-content');
+            let alreadyDisplayed = false;
+            const parsedLastModelMessage = marked.parse(lastModelMessage.trim()) as string;
+            existingMessages.forEach(msgElement => {
+                if (msgElement.innerHTML?.trim() === parsedLastModelMessage.trim()) {
+                    alreadyDisplayed = true;
+                }
+            });
+            if (!alreadyDisplayed) {
+                displayMessage(lastModelMessage, 'model');
+            }
         }
-    });
-    chatOutput.scrollTop = chatOutput.scrollHeight; // Scroll to the bottom
-}
+    }
+}, 0);
+
 
 window.addEventListener('error', (event) => {
   if (event.message.includes("API_KEY not set") || event.message.includes("API_KEY is not configured")) {
@@ -1480,9 +1686,7 @@ window.addEventListener('error', (event) => {
   }
 });
 
-// Ensure loadKnowledgeBase completes before displaying history
 (async () => {
   await loadKnowledgeBase();
-  displayInitialHistory(); // Display history after knowledge base is loaded
   chatInput.focus();
 })();
